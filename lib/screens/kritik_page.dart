@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../data/database_helper.dart';
 import '../data/preferences_helper.dart';
+import '../theme/app_colors.dart';
 import 'detail_kritik_page.dart';
 
 class KritikPage extends StatefulWidget {
@@ -19,23 +20,25 @@ class _KritikPageState extends State<KritikPage> {
   final _isiCtrl = TextEditingController();
   String? _base64BuktiKeluhan;
   String _namaPelapor = 'Warga';
+  String _roleUser = 'Warga Mandiri';
 
   @override
   void initState() {
     super.initState();
-    _loadProfileName();
+    _loadKritikSession();
     _refreshData();
   }
 
-  Future<void> _loadProfileName() async {
+  Future<void> _loadKritikSession() async {
     final sesi = await PreferencesHelper.ambilSesiLogin();
     setState(() {
       _namaPelapor = sesi['nama_warga'] ?? 'Warga';
+      _roleUser = sesi['role_user'] ?? 'Warga Mandiri';
     });
   }
 
   Future<void> _refreshData() async {
-    final data = await DatabaseHelper.instance.getKritik();
+    final data = await DatabaseHelper.instance.getKritik(namaPelapor: _namaPelapor);
     setState(() { _dataKritik = data; });
   }
 
@@ -74,51 +77,29 @@ class _KritikPageState extends State<KritikPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isPengurusRT = _roleUser == 'Pengurus RT';
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EDFF),
-      appBar: AppBar(
-        title: const Text('Kritik & Aduan'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: const Color(0xFF6366F1),
-      ),
+      backgroundColor: AppColors.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              color: const Color(0xFFF5F3FF),
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(18.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: const [
-                    Text('Laporkan kerusakan fasilitas umum dengan cepat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
-                    SizedBox(height: 8),
-                    Text('Isi form di bawah ini, unggah foto bukti, lalu kirim laporan Anda agar tim RT dapat menindaklanjuti.', style: TextStyle(fontSize: 13, color: Color(0xFF6366F1))),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              elevation: 1,
-              child: Padding(
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                elevation: 1,
+                child: Padding(
                 padding: const EdgeInsets.all(18.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Form Aduan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF6366F1))),
+                    const Text('Form Aduan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary)),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _judulCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Judul Keluhan Fasilitas',
-                        prefixIcon: Icon(Icons.report_problem_outlined, color: Color(0xFF6366F1)),
+                        prefixIcon: Icon(Icons.report_problem_outlined, color: AppColors.primary),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -129,12 +110,12 @@ class _KritikPageState extends State<KritikPage> {
                       decoration: const InputDecoration(
                         labelText: 'Deskripsi Detail Keluhan',
                         alignLabelWithHint: true,
-                        prefixIcon: Icon(Icons.description_outlined, color: Color(0xFF6366F1)),
+                        prefixIcon: Icon(Icons.description_outlined, color: AppColors.primary),
                         border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 14),
-                    const Text('Foto Bukti Lapangan', style: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF4F46E5))),
+                    const Text('Foto Bukti Lapangan', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.primary)),
                     const SizedBox(height: 8),
                     if (_base64BuktiKeluhan != null)
                       ClipRRect(
@@ -150,22 +131,22 @@ class _KritikPageState extends State<KritikPage> {
                       Container(
                         height: 140,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF5F3FF),
+                          color: AppColors.secondary.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE9D5FF)),
+                          border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
                         ),
                         child: const Center(
-                          child: Text('Belum ada foto bukti yang dipilih', style: TextStyle(color: Color(0xFF6366F1))),
+                          child: Text('Belum ada foto bukti yang dipilih', style: TextStyle(color: AppColors.secondary)),
                         ),
                       ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: _pilihFotoKerusakan,
-                      icon: const Icon(Icons.add_a_photo, color: Color(0xFF6366F1)),
-                      label: const Text('Pilih Foto Bukti Lapangan', style: TextStyle(color: Color(0xFF6366F1))),
+                      icon: const Icon(Icons.add_a_photo, color: AppColors.primary),
+                      label: const Text('Pilih Foto Bukti Lapangan', style: TextStyle(color: AppColors.primary)),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        side: const BorderSide(color: Color(0xFF6366F1)),
+                        side: const BorderSide(color: AppColors.primary),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -175,7 +156,7 @@ class _KritikPageState extends State<KritikPage> {
                       child: ElevatedButton(
                         onPressed: _kirimLaporan,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         child: const Text('KIRIM LAPORAN ADUAN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -185,17 +166,21 @@ class _KritikPageState extends State<KritikPage> {
                 ),
               ),
             ),
+            
             const SizedBox(height: 26),
-            const Text('Daftar Aduan Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+            const Text(
+              'Daftar Aduan Anda',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
             const SizedBox(height: 12),
             if (_dataKritik.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: Column(
                   children: const [
-                    Icon(Icons.inbox_outlined, size: 48, color: Color(0xFFA78BFA)),
+                    Icon(Icons.inbox_outlined, size: 48, color: AppColors.secondary),
                     SizedBox(height: 12),
-                    Text('Belum ada laporan kritik', style: TextStyle(color: Color(0xFF6366F1), fontSize: 14)),
+                    Text('Belum ada laporan kritik', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                   ],
                 ),
               )
@@ -232,7 +217,7 @@ class _KritikPageState extends State<KritikPage> {
                                   height: 60,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(14),
-                                    color: const Color(0xFFF5F3FF),
+                                    color: AppColors.secondary.withOpacity(0.12),
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(14),
@@ -249,7 +234,7 @@ class _KritikPageState extends State<KritikPage> {
                                     children: [
                                       Text(item['judul_keluhan'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                       const SizedBox(height: 6),
-                                      Text(item['isi_critic'], style: const TextStyle(fontSize: 13, color: Color(0xFF475569)), maxLines: 3, overflow: TextOverflow.ellipsis),
+                                      Text(item['isi_critic'], style: const TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 3, overflow: TextOverflow.ellipsis),
                                     ],
                                   ),
                                 ),
@@ -259,14 +244,14 @@ class _KritikPageState extends State<KritikPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Pelapor: ${item['nama_pelapor']}', style: const TextStyle(fontSize: 13, color: Color(0xFF475569))),
+                                Text('Pelapor: ${item['nama_pelapor']}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F3FF),
+                                    color: AppColors.secondary.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Text(item['tanggal_lapor'], style: const TextStyle(fontSize: 12, color: Color(0xFF6366F1))),
+                                  child: Text(item['tanggal_lapor'], style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
                                 ),
                               ],
                             ),

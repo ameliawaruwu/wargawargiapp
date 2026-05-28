@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -13,31 +14,31 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: onTap,
-      type: BottomNavigationBarType.fixed, 
+    return NavigationBar(
+      selectedIndex: currentIndex,
+      onDestinationSelected: onTap,
       backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF6366F1), 
-      unselectedItemColor: const Color(0xFF94A3B8), 
-      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12), 
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_rounded),
-          activeIcon: Icon(Icons.home_rounded),
+      indicatorColor: AppColors.primary.withAlpha(30),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded, color: AppColors.primary),
           label: 'Home',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.description_rounded),
+        NavigationDestination(
+          icon: Icon(Icons.description_outlined),
+          selectedIcon: Icon(Icons.description_rounded, color: AppColors.primary),
           label: 'Surat',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.account_balance_wallet_rounded),
-          label: 'Iuran Kas',
+        NavigationDestination(
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary),
+          label: 'Kas',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.campaign_rounded),
+        NavigationDestination(
+          icon: Icon(Icons.campaign_outlined),
+          selectedIcon: Icon(Icons.campaign_rounded, color: AppColors.primary),
           label: 'Kritik',
         ),
       ],

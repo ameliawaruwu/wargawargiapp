@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/database_helper.dart';
+import '../theme/app_colors.dart';
 import 'kritik_page.dart';
 
 class DetailKritikPage extends StatefulWidget {
@@ -144,11 +145,11 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EDFF),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Detail Laporan Aduan'),
         centerTitle: true,
-        backgroundColor: const Color(0xFF6366F1),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         actions: [
           IconButton(
@@ -186,7 +187,7 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                                     const Text('Pelapor',
                                         style: TextStyle(
                                             fontSize: 12,
-                                            color: Color(0xFF64748B))),
+                                            color: AppColors.textSecondary)),
                                     const SizedBox(height: 4),
                                     Text(widget.kritik['nama_pelapor'],
                                         style: const TextStyle(
@@ -199,7 +200,7 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F3FF),
+                                  color: AppColors.secondary.withOpacity(0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
@@ -207,13 +208,13 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                                     const Text('Waktu Lapor',
                                         style: TextStyle(
                                             fontSize: 10,
-                                            color: Color(0xFF64748B))),
+                                            color: AppColors.textSecondary)),
                                     const SizedBox(height: 2),
                                     Text(widget.kritik['tanggal_lapor'],
                                         style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF6366F1))),
+                                            color: AppColors.secondary)),
                                   ],
                                 ),
                               ),
@@ -234,20 +235,20 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                         children: [
                           Text(
                             _isEditMode ? 'Edit Laporan' : 'Detail Laporan',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF6366F1)),
+                                color: AppColors.primary),
                           ),
                           const SizedBox(height: 16),
                           if (_isEditMode)
                             TextField(
                               controller: _judulCtrl,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Judul Keluhan',
-                                prefixIcon: Icon(Icons.edit_note,
-                                    color: Color(0xFF6366F1)),
-                                border: OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.edit_note),
+                                prefixIconColor: AppColors.primary,
+                                border: const OutlineInputBorder(),
                               ),
                             )
                           else
@@ -261,12 +262,12 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                             TextField(
                               controller: _isiCtrl,
                               maxLines: 5,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Deskripsi Detail',
                                 alignLabelWithHint: true,
-                                prefixIcon: Icon(Icons.description,
-                                    color: Color(0xFF6366F1)),
-                                border: OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.description),
+                                prefixIconColor: AppColors.primary,
+                                border: const OutlineInputBorder(),
                               ),
                             )
                           else
@@ -296,8 +297,8 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                               if (_isEditMode)
                                 TextButton.icon(
                                   onPressed: _pilihFotoKerusakan,
-                                  icon: const Icon(Icons.add_a_photo),
-                                  label: const Text('Ganti Foto'),
+                                  icon: const Icon(Icons.add_a_photo, color: AppColors.primary),
+                                  label: const Text('Ganti Foto', style: TextStyle(color: AppColors.primary)),
                                 )
                             ],
                           ),
@@ -316,13 +317,13 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                             Container(
                               height: 200,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F3FF),
+                                color: AppColors.secondary.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                    color: const Color(0xFFE9D5FF)),
+                                    color: AppColors.secondary.withOpacity(0.4)),
                               ),
                               child: const Center(
-                                child: Text('Tidak ada foto'),
+                                child: Text('Tidak ada foto', style: TextStyle(color: AppColors.textSecondary)),
                               ),
                             ),
                         ],
@@ -337,7 +338,7 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                       child: ElevatedButton(
                         onPressed: _simpanPerubahan,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),

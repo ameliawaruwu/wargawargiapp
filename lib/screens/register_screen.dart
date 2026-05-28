@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/database_helper.dart';
+import '../theme/app_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -55,7 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.background,
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 450),
@@ -71,9 +72,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.app_registration_rounded, size: 50, color: Color(0xFF6366F1)),
+                      const Icon(Icons.app_registration_rounded, size: 50, color: AppColors.primary),
                       const SizedBox(height: 12),
-                      const Text('REGISTRASI WARGA BARU', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B365D))),
+                      const Text('REGISTRASI WARGA BARU', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
                       const SizedBox(height: 24),
 
                       TextFormField(
@@ -131,7 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _eksekusiPendaftaranWarga,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1), 
+                            backgroundColor: AppColors.primary, 
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: _isLoading 
@@ -142,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Sudah punya akun? Kembali ke Gerbang Login', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12)),
+                        child: const Text('Sudah punya akun? Kembali ke Gerbang Login', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
                       )
                     ],
                   ),

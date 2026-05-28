@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import 'rt_surat_page.dart';
+import 'rt_kas_page.dart';
+import 'rt_kritik_page.dart';
+import 'beranda_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../component/custom_bottom_nav.dart';
-import '../theme/app_colors.dart';
-import 'beranda_page.dart';
-import 'surat_page.dart';
-import 'kas_page.dart';
-import 'kritik_page.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class RtHomeScreen extends StatefulWidget {
+  const RtHomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<RtHomeScreen> createState() => _RtHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _RtHomeScreenState extends State<RtHomeScreen> {
   int _selectedIndex = 0;
-  String _namaWarga = "Warga Mandiri";
-  String _roleUser = "Warga Mandiri";
-  String? _fotoProfilBase64;
+  String _namaWarga = "Pengurus RT";
+  String _roleUser = "Pengurus RT";
 
   @override
   void initState() {
@@ -30,10 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final sp = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _namaWarga = sp.getString('nama_warga') ?? "Warga Mandiri";
-        _roleUser = sp.getString('role_user') ?? "Warga Mandiri";
-        final nik = sp.getString('nik') ?? '';
-        _fotoProfilBase64 = sp.getString('foto_profil_$nik');
+        _namaWarga = sp.getString('nama_warga') ?? "Pengurus RT";
+        _roleUser = sp.getString('role_user') ?? "Pengurus RT";
       });
     }
   }
@@ -44,20 +41,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _getTitle(int index) {
     switch (index) {
-      case 1: return 'Surat Pengantar';
-      case 2: return 'Iuran & Kas';
-      case 3: return 'Laporan Warga';
-      default: return 'Aplikasi Warga';
+      case 1: return 'Kelola Surat';
+      case 2: return 'Kelola Iuran Kas';
+      case 3: return 'Laporan Masuk';
+      default: return 'Dashboard RT';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      BerandaPage(namaWarga: _namaWarga, roleUser: _roleUser), 
-      const SuratPage(),
-      KasPage(namaWarga: _namaWarga), 
-      const KritikPage(),
+      BerandaPage(namaWarga: _namaWarga, roleUser: _roleUser),
+      const RtSuratPage(),
+      const RtKasPage(),
+      const RtKritikPage(),
     ];
 
     return Scaffold(

@@ -46,7 +46,9 @@ class DatabaseHelper {
         nama_pemohon TEXT NOT NULL,
         jenis_surat TEXT NOT NULL,
         perihal TEXT NOT NULL,
-        tanggal_aju TEXT NOT NULL
+        tanggal_aju TEXT NOT NULL,
+        status_surat TEXT DEFAULT 'Pending',
+        file_pdf TEXT
       )
     ''');
 
@@ -97,15 +99,59 @@ class DatabaseHelper {
     return null;
   }
 
+  Future<Map<String, dynamic>?> getUserByNik(String nik) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'users',
+      where: 'nik = ?',
+      whereArgs: [nik],
+      limit: 1,
+    );
+    if (maps.isNotEmpty) return maps.first;
+    return null;
+  }
+
+  Future<int> updateUserByNik(String nik, Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.update(
+      'users',
+      row,
+      where: 'nik = ?',
+      whereArgs: [nik],
+    );
+  }
+
   // --- CRUD OPERASI: MODUL LAYANAN SURAT ---
   Future<int> insertSurat(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('surat', row);
   }
 
-  Future<List<Map<String, dynamic>>> getSurat() async {
+  Future<List<Map<String, dynamic>>> getSurat({String? namaPemohon}) async {
     final db = await instance.database;
+    if (namaPemohon != null && namaPemohon.isNotEmpty) {
+      return await db.query(
+        'surat', 
+        where: 'nama_pemohon = ?', 
+        whereArgs: [namaPemohon], 
+        orderBy: 'id DESC',
+      );
+    }
     return await db.query('surat', orderBy: 'id DESC');
+  }
+
+  Future<int> updateSuratStatus(int id, String status, {String? filePdf}) async {
+    final db = await instance.database;
+    Map<String, dynamic> updateData = {'status_surat': status};
+    if (filePdf != null) {
+      updateData['file_pdf'] = filePdf;
+    }
+    return await db.update(
+      'surat',
+      updateData,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // --- CRUD OPERASI: MODUL IURAN KAS RT ---
@@ -114,9 +160,27 @@ class DatabaseHelper {
     return await db.insert('tabel_kas', row);
   }
 
-  Future<List<Map<String, dynamic>>> getKas() async {
+  Future<List<Map<String, dynamic>>> getKas({String? namaWarga}) async {
     final db = await instance.database;
+    if (namaWarga != null && namaWarga.isNotEmpty) {
+      return await db.query(
+        'tabel_kas',
+        where: 'nama_warga = ?',
+        whereArgs: [namaWarga],
+        orderBy: 'id DESC',
+      );
+    }
     return await db.query('tabel_kas', orderBy: 'id DESC');
+  }
+
+  Future<int> updateKasStatus(int id, String status) async {
+    final db = await instance.database;
+    return await db.update(
+      'tabel_kas',
+      {'status_verifikasi': status},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // --- CRUD OPERASI: MODUL KRITIK & ADUAN ---
@@ -125,8 +189,16 @@ class DatabaseHelper {
     return await db.insert('kritik', row);
   }
 
-  Future<List<Map<String, dynamic>>> getKritik() async {
+  Future<List<Map<String, dynamic>>> getKritik({String? namaPelapor}) async {
     final db = await instance.database;
+    if (namaPelapor != null && namaPelapor.isNotEmpty) {
+      return await db.query(
+        'kritik',
+        where: 'nama_pelapor = ?',
+        whereArgs: [namaPelapor],
+        orderBy: 'id DESC',
+      );
+    }
     return await db.query('kritik', orderBy: 'id DESC');
   }
 
@@ -165,6 +237,21 @@ class DatabaseHelper {
         'nama': 'Amelia',
         'password': 'amel',
         'role': 'Warga Mandiri',
+      });
+    }
+
+    final existingRt = await db.query(
+      'users',
+      where: 'nik = ?',
+      whereArgs: ['3010101010101018'],
+    );
+
+    if (existingRt.isEmpty) {
+      await insertUser({
+        'nik': '3010101010101018',
+        'nama': 'Pengurus RT',
+        'password': '2001',
+        'role': 'Pengurus RT',
       });
     }
   }
