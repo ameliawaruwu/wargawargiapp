@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,7 +24,7 @@ class _KasPageState extends State<KasPage> {
   String _bulanSelected = 'Mei';
   String _filterStatusSelected = 'SEMUA'; // Filter: 'SEMUA', 'MASUK', 'KELUAR'
   
-  File? _imageFile;
+  Uint8List? _imageBytes;
   String? _base64Image;
   bool _isUploading = false;
   List<Map<String, dynamic>> _riwayatKas = [];
@@ -71,7 +71,7 @@ class _KasPageState extends State<KasPage> {
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _imageBytes = bytes;
         _base64Image = base64Encode(bytes); // Mengonversi berkas gambar biner ke teks String Base64
       });
     }
@@ -127,7 +127,7 @@ class _KasPageState extends State<KasPage> {
     _nominalController.clear();
     _keteranganController.clear();
     setState(() {
-      _imageFile = null;
+      _imageBytes = null;
       _base64Image = null;
       _isUploading = false;
     });
@@ -238,11 +238,11 @@ class _KasPageState extends State<KasPage> {
                             ),
                           ],
                         ),
-                        if (_imageFile != null) ...[
+                        if (_imageBytes != null) ...[
                           const SizedBox(height: 10),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(_imageFile!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                            child: Image.memory(_imageBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
                           ),
                         ],
                         const SizedBox(height: 16),
