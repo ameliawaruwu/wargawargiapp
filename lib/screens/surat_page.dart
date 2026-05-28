@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
+import '../component/custom_bottom_nav.dart';
 
 class SuratPage extends StatefulWidget {
   const SuratPage({super.key});

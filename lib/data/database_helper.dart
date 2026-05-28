@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:sqflite/sqflite.dart';
+import 'dart:async';
 import 'package:path/path.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -12,43 +10,97 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('wargawargiapp_final.db');
+    _database = await _initDB('wargawargi.db');
     return _database!;
   }
 
   Future<Database> _initDB(String filePath) async {
-    if (kIsWeb) {
-      databaseFactory = databaseFactoryFfiWeb;
-      final path = 'assets/db/$filePath';
-      return await openDatabase(path, version: 1, onCreate: _createDB);
-    } else {
-      final dbPath = await getDatabasesPath();
-      final path = join(dbPath, filePath);
-      return await openDatabase(path, version: 1, onCreate: _createDB);
-    }
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, filePath);
+
+    // Memicu onCreate jika file database belum terbentuk di device
+    return await openDatabase(
+      path, 
+      version: 1, 
+      onCreate: _createDB,
+    );
   }
 
+  // === STRUKTUR TABEL BARU SINKRON ASESMEN 2 ===
   Future _createDB(Database db, int version) async {
-    await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, nik TEXT UNIQUE, nama TEXT, password TEXT)');
-    await db.execute('CREATE TABLE surat (id INTEGER PRIMARY KEY AUTOINCREMENT, jenis_surat TEXT, tujuan_surat TEXT, perihal TEXT)');
-    await db.execute('CREATE TABLE kritik (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_pelapor TEXT, tanggal_lapor TEXT, judul_keluhan TEXT, isi_critic TEXT, bukti_keluhan TEXT)');
-    await db.execute('CREATE TABLE kas (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_warga TEXT, jenis_iuran TEXT, jumlah_nominal TEXT, bukti_bayar TEXT)');
+    // 1. Tabel Akun Users
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nik TEXT NOT NULL UNIQUE,
+        nama TEXT NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL
+      )
+    ''');
 
-    // Akun default simulasi pengujian awal ( Mitchell Santos )
-    await db.rawInsert("INSERT INTO users(nik, nama, password) VALUES('1234567890123456', 'Mitchell Santos', '1234')");
+    // 2. Tabel Layanan Persuratan (Anggota 1)
+    await db.execute('''
+      CREATE TABLE surat (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nama_pemohon TEXT NOT NULL,
+        jenis_surat TEXT NOT NULL,
+        perihal TEXT NOT NULL,
+        tanggal_aju TEXT NOT NULL
+      )
+    ''');
+
+    // 3. TABEL KAS TERBARU — KOMPLEKS MULTI-STATUS (Amelia)
+    await db.execute('''
+      CREATE TABLE tabel_kas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nama_warga TEXT NOT NULL,
+        jenis_iuran TEXT NOT NULL,
+        tipe_transaksi TEXT NOT NULL,      -- 'MASUK' atau 'KELUAR'
+        bulan_periode TEXT NOT NULL,       -- Periode iuran bulanan
+        jumlah_nominal TEXT NOT NULL,      -- Angka nominal uang
+        keterangan TEXT,
+        bukti_bayar TEXT,                  -- String teks konversi Base64 Gambar Struk
+        status_verifikasi TEXT NOT NULL,   -- 'Pending' atau 'Lunas'
+        tanggal_setor TEXT NOT NULL        -- ISO 8601 String Otomatis (DateTime)
+      )
+    ''');
+
+    // 4. Tabel Kritik & Aduan Fasum (Anggota 3)
+    await db.execute('''
+      CREATE TABLE kritik (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nama_pelapor TEXT NOT NULL,
+        judul_keluhan TEXT NOT NULL,
+        isi_critic TEXT NOT NULL,
+        bukti_keluhan TEXT,                -- Teks Base64 Foto Lapangan
+        tanggal_lapor TEXT NOT NULL
+      )
+    ''');
   }
 
+  // =========================================================================
+  // CORE FUNCTIONS: MANIPULASI DATA (CRUD ENGINE)
+  // =========================================================================
+
+  // --- CRUD OPERASI: USERS & AUTHENTICATION ---
   Future<int> insertUser(Map<String, dynamic> row) async {
     final db = await instance.database;
-    try { return await db.insert('users', row); } catch (_) { return -1; }
+    return await db.insert('users', row);
   }
 
   Future<Map<String, dynamic>?> checkLogin(String nik, String password) async {
     final db = await instance.database;
-    final res = await db.query('users', where: 'nik = ? AND password = ?', whereArgs: [nik, password]);
-    return res.isNotEmpty ? res.first : null;
+    final maps = await db.query(
+      'users',
+      where: 'nik = ? AND password = ?',
+      whereArgs: [nik, password],
+    );
+    if (maps.isNotEmpty) return maps.first;
+    return null;
   }
 
+  // --- CRUD OPERASI: MODUL LAYANAN SURAT ---
   Future<int> insertSurat(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('surat', row);
@@ -59,6 +111,18 @@ class DatabaseHelper {
     return await db.query('surat', orderBy: 'id DESC');
   }
 
+  // --- CRUD OPERASI: MODUL IURAN KAS RT ---
+  Future<int> insertKas(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.insert('tabel_kas', row);
+  }
+
+  Future<List<Map<String, dynamic>>> getKas() async {
+    final db = await instance.database;
+    return await db.query('tabel_kas', orderBy: 'id DESC');
+  }
+
+  // --- CRUD OPERASI: MODUL KRITIK & ADUAN ---
   Future<int> insertKritik(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('kritik', row);
@@ -69,23 +133,28 @@ class DatabaseHelper {
     return await db.query('kritik', orderBy: 'id DESC');
   }
 
-  Future<int> insertKas(Map<String, dynamic> row) async {
-    final db = await instance.database;
-    return await db.insert('kas', row);
-  }
-
-  Future<List<Map<String, dynamic>>> getKas() async {
-    final db = await instance.database;
-    return await db.query('kas', orderBy: 'id DESC');
-  }
-
+  // --- ARSITEKTUR UPDATE & DELETE GLOBAL ---
   Future<int> updateData(String table, Map<String, dynamic> row, int id) async {
     final db = await instance.database;
-    return await db.update(table, row, where: 'id = ?', whereArgs: [id]);
+    return await db.update(
+      table, 
+      row, 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
   }
 
   Future<int> deleteData(String table, int id) async {
     final db = await instance.database;
-    return await db.delete(table, where: 'id = ?', whereArgs: [id]);
+    return await db.delete(
+      table, 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+  }
+
+  Future close() async {
+    final db = await instance.database;
+    db.close();
   }
 }

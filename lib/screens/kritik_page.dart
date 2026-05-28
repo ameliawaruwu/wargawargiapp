@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/database_helper.dart';
+import '../component/custom_bottom_nav.dart';
 
 class KritikPage extends StatefulWidget {
   const KritikPage({super.key});
