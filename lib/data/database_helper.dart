@@ -153,6 +153,25 @@ class DatabaseHelper {
     );
   }
 
+  /// Seed default user ke database jika belum ada.
+  Future<void> seedDefaultUser() async {
+    final db = await instance.database;
+    final existing = await db.query(
+      'users',
+      where: 'nik = ?',
+      whereArgs: ['3210101010101013'],
+    );
+
+    if (existing.isEmpty) {
+      await insertUser({
+        'nik': '3210101010101013',
+        'nama': 'Amelia',
+        'password': 'amel',
+        'role': 'Warga Mandiri',
+      });
+    }
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();
