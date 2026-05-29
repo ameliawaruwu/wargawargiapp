@@ -25,6 +25,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
   bool _obscurePass = true;
   String _nik = '';
   String _role = 'Warga Mandiri';
+  String _phoneWarga = '-';   // Tampungan data No. HP
+  String _alamatWarga = '-';  // Tampungan data Alamat
   String _currentPassword = '';
   String _statusMessage = '';
   String? _fotoProfilBase64;
@@ -71,6 +73,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
       _isPengurusRT = _role == 'Pengurus RT';
       _namaCtrl.text = user['nama'] ?? '';
       _currentPassword = user['password'] ?? '';
+      
+      // TARIK DATA NO HP DAN ALAMAT DARI DATABASE
+      _phoneWarga = user['warga_phone'] ?? '-';
+      _alamatWarga = user['warga_alamat'] ?? '-';
+      
       _fotoProfilBase64 = storedPhoto;
       _fotoProfilBytes = storedPhoto != null ? base64Decode(storedPhoto) : null;
       _isLoading = false;
@@ -284,6 +291,15 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             const SizedBox(height: 16),
                             _buildEditableField(label: 'Nama Lengkap', controller: _namaCtrl, hint: 'Masukkan nama lengkap'),
                             const SizedBox(height: 16),
+                            
+                            // TAMPILKAN INFO NOMOR HP (READ-ONLY)
+                            _buildReadOnlyField(label: 'Nomor WhatsApp', value: _phoneWarga),
+                            const SizedBox(height: 16),
+                            
+                            // TAMPILKAN INFO ALAMAT (READ-ONLY)
+                            _buildReadOnlyField(label: 'Alamat Domisili', value: _alamatWarga),
+                            const SizedBox(height: 16),
+                            
                             _buildReadOnlyField(label: 'Peran Akun', value: _role),
                             const SizedBox(height: 16),
                             _buildPasswordField(context),
@@ -298,25 +314,25 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
                                 child: _isSaving
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: OutlinedButton(
-                              onPressed: _logout,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.redAccent,
-                                side: const BorderSide(color: Colors.redAccent),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
-                              child: const Text('Keluar (Logout)', style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: OutlinedButton(
+                                onPressed: _logout,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.redAccent,
+                                  side: const BorderSide(color: Colors.redAccent),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                child: const Text('Keluar (Logout)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

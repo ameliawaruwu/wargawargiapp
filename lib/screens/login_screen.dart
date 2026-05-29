@@ -14,17 +14,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nikCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _passwordHidden = true;
 
   Future<void> _prosesLogin() async {
-    if (_nikCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ NIK dan Password tidak boleh kosong!'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final user = await DatabaseHelper.instance.checkLogin(_nikCtrl.text, _passCtrl.text);
     
@@ -64,60 +60,100 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE5E7EB))),
-              child: Padding(
-                padding: const EdgeInsets.all(28.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.holiday_village, size: 50, color: AppColors.primary),
-                    const SizedBox(height: 12),
-                    const Text('PORTAL WARGAWARGI', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _nikCtrl, 
-                      decoration: const InputDecoration(labelText: 'Masukkan NIK Anda', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passCtrl, 
-                      obscureText: _passwordHidden, 
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(_passwordHidden ? Icons.visibility_off : Icons.visibility, color: AppColors.primary),
-                          onPressed: () => setState(() => _passwordHidden = !_passwordHidden),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.holiday_village, size: 50, color: AppColors.primary),
+                  const SizedBox(height: 12),
+                  const Text('PORTAL WARGAWARGI', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Masuk dengan akun warga Anda untuk mengakses layanan RT',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _nikCtrl,
+                              keyboardType: TextInputType.number,
+                              maxLength: 16,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.badge, color: AppColors.primary),
+                                labelText: 'NIK',
+                                hintText: 'Masukkan 16 digit NIK',
+                                counterText: "",
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) return 'NIK wajib diisi!';
+                                if (val.trim().length != 16) return 'NIK harus tepat 16 digit!';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _passCtrl,
+                              obscureText: _passwordHidden,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.lock, color: AppColors.primary),
+                                labelText: 'Password',
+                                hintText: 'Masukkan password',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                suffixIcon: IconButton(
+                                  icon: Icon(_passwordHidden ? Icons.visibility_off : Icons.visibility, color: AppColors.textSecondary),
+                                  onPressed: () => setState(() => _passwordHidden = !_passwordHidden),
+                                ),
+                              ),
+                              validator: (val) {
+                                if (val == null || val.isEmpty) return 'Password wajib diisi!';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 22),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: _prosesLogin,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                child: const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                                );
+                              },
+                              child: const Text('Belum punya akun? Daftar', style: TextStyle(color: AppColors.primary, fontSize: 14)),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _prosesLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary, 
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('MASUK APLIKASI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                      child: const Text('Belum punya akun? Registrasi Akun Warga Di Sini', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
-                    )
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
