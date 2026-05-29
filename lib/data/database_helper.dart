@@ -35,7 +35,9 @@ class DatabaseHelper {
         nik TEXT NOT NULL UNIQUE,
         nama TEXT NOT NULL,
         password TEXT NOT NULL,
-        role TEXT NOT NULL
+        role TEXT NOT NULL,
+        warga_phone TEXT,
+        warga_alamat TEXT
       )
     ''');
 

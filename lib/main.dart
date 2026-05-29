@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'screens/landing_page.dart';
 import 'data/database_helper.dart';
 import 'theme/app_colors.dart';
 
@@ -25,7 +25,6 @@ class WargaWargiApp extends StatelessWidget {
           primary: AppColors.primary,
           secondary: AppColors.secondary,
           surface: AppColors.surface,
-          background: AppColors.background,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.primary,
@@ -40,7 +39,7 @@ class WargaWargiApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const LoginScreen(),
+      home: const LandingPage(),
     );
   }
 }
