@@ -158,58 +158,68 @@ class _SuratPageState extends State<SuratPage> {
   void _prosesSurat(Map<String, dynamic> surat) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Verifikasi Berkas Surat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-              const SizedBox(height: 8),
-              Text('Tentukan status validasi berkas dari ${surat['nama_pemohon']}.', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final navigator = Navigator.of(context);
-                        await DatabaseHelper.instance.updateSuratStatus(surat['id'], 'Ditolak');
-                        navigator.pop();
-                        _refreshSuratList();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF5350),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                      ),
-                      child: const Text('TOLAK', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final navigator = Navigator.of(context);
-                        await DatabaseHelper.instance.updateSuratStatus(surat['id'], 'Disetujui');
-                        navigator.pop();
-                        _refreshSuratList();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF66BB6A),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                      ),
-                      child: const Text('SETUJUI', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ),
-                ],
-              )
-            ],
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Verifikasi Berkas Surat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    const SizedBox(height: 8),
+                    Text('Tentukan status validasi berkas dari ${surat['nama_pemohon']}.', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final navigator = Navigator.of(context);
+                              await DatabaseHelper.instance.updateSuratStatus(surat['id'], 'Ditolak');
+                              navigator.pop();
+                              _refreshSuratList();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF5350),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                            ),
+                            child: const Text('TOLAK', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final navigator = Navigator.of(context);
+                              await DatabaseHelper.instance.updateSuratStatus(surat['id'], 'Disetujui');
+                              navigator.pop();
+                              _refreshSuratList();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF66BB6A),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                            ),
+                            child: const Text('SETUJUI', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
