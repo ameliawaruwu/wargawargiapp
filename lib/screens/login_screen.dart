@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: ElevatedButton(
                         onPressed: _prosesLoginWarga,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1), 
+                          backgroundColor: a
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text('MASUK SEBAGAI WARGA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
