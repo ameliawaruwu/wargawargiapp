@@ -25,10 +25,12 @@ class _KritikPageState extends State<KritikPage> {
   @override
   void initState() {
     super.initState();
-    _loadKritikSessionAndData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeKritikPage();
+    });
   }
 
-  Future<void> _loadKritikSessionAndData() async {
+  Future<void> _initializeKritikPage() async {
     await _loadKritikSession();
     await _refreshData();
   }
@@ -39,10 +41,15 @@ class _KritikPageState extends State<KritikPage> {
       _namaPelapor = sesi['nama_warga'] ?? 'Warga';
       _roleUser = sesi['role_user'] ?? 'Warga Mandiri';
     });
+    debugPrint('🔍 KritikPage - Nama Pelapor: $_namaPelapor');
   }
 
   Future<void> _refreshData() async {
-    final data = await DatabaseHelper.instance.getKritik(namaPelapor: _namaPelapor);
+    final sesi = await PreferencesHelper.ambilSesiLogin();
+    final namaFilter = sesi['nama_warga'] ?? _namaPelapor;
+    debugPrint('🔍 Query Kritik dengan nama: $namaFilter');
+    final data = await DatabaseHelper.instance.getKritik(namaPelapor: namaFilter);
+    debugPrint('📊 Ditemukan ${data.length} data kritik');
     setState(() { _dataKritik = data; });
   }
 
@@ -60,10 +67,16 @@ class _KritikPageState extends State<KritikPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ Lengkapi form dan lampiran foto aduan!'), backgroundColor: Colors.orange));
       return;
     }
+    
+    // Ambil nama terbaru dari SharedPreferences untuk memastikan konsisten
+    final sesi = await PreferencesHelper.ambilSesiLogin();
+    final namaAkhir = sesi['nama_warga'] ?? _namaPelapor;
+    debugPrint('💾 Menyimpan Kritik dengan nama: $namaAkhir');
+    
     final now = DateTime.now();
     final tglFormat = DateFormat('dd/MM/yyyy HH:mm').format(now);
     await DatabaseHelper.instance.insertKritik({
-      'nama_pelapor': _namaPelapor,
+      'nama_pelapor': namaAkhir,
       'tanggal_lapor': tglFormat,
       'judul_keluhan': _judulCtrl.text,
       'isi_critic': _isiCtrl.text,

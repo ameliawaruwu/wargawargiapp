@@ -28,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user != null) {
       final sp = await SharedPreferences.getInstance();
       await sp.setBool('is_logged_in', true);
+      await sp.setString('nik', user['nik']);
       await sp.setString('nama_warga', user['nama']);
       await sp.setString('role_user', 'Warga Mandiri');
       await sp.setString('kode_wilayah', 'RT10_RW04');
