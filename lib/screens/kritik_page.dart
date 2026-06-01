@@ -25,8 +25,12 @@ class _KritikPageState extends State<KritikPage> {
   @override
   void initState() {
     super.initState();
-    _loadKritikSession();
-    _refreshData();
+    _loadKritikSessionAndData();
+  }
+
+  Future<void> _loadKritikSessionAndData() async {
+    await _loadKritikSession();
+    await _refreshData();
   }
 
   Future<void> _loadKritikSession() async {

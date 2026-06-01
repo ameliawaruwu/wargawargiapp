@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
-import '../theme/app_colors.dart';
 import 'home_screen.dart'; 
-import 'rt_home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,24 +12,24 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nikCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  bool _passwordHidden = true;
 
-  Future<void> _prosesLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _prosesLoginWarga() async {
+    if (_nikCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ NIK dan Password tidak boleh kosong!'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
 
     final user = await DatabaseHelper.instance.checkLogin(_nikCtrl.text, _passCtrl.text);
     
     if (user != null) {
-      final userRole = user['role'] ?? 'Warga Mandiri';
-
       final sp = await SharedPreferences.getInstance();
       await sp.setBool('is_logged_in', true);
-      await sp.setString('nik', user['nik']);
       await sp.setString('nama_warga', user['nama']);
-      await sp.setString('role_user', userRole);
+      await sp.setString('role_user', 'Warga Mandiri');
       await sp.setString('kode_wilayah', 'RT10_RW04');
       await sp.setInt('total_akses_aplikasi', 1);
       await sp.setBool('fitur_dark_tema', false);
@@ -41,11 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(content: Text('✓ Selamat datang kembali, ${user['nama']}!'), backgroundColor: Colors.green),
         );
         
-        if (userRole == 'Pengurus RT') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RtHomeScreen()));
-        } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-        }
+        // Menuju ke HomeScreen
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       }
     } else {
       if (mounted) {
@@ -73,9 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.holiday_village, size: 50, color: Color(0xFF6366F1)),
+                    const Icon(Icons.holiday_village, size: 50, color: Color(0xFF334E68)),
                     const SizedBox(height: 12),
-                    const Text('PORTAL WARGAWARGI', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1B365D))),
+                    const Text('PORTAL WARGAWARGI', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF334E68))),
                     const SizedBox(height: 24),
                     TextField(
                       controller: _nikCtrl, 
@@ -92,9 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _prosesLogin,
+                        onPressed: _prosesLoginWarga,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1), 
+                          backgroundColor: const Color(0xFF334E68), 
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text('MASUK SEBAGAI WARGA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -103,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                      child: const Text('Belum punya akun? Registrasi Akun Warga Di Sini', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12)),
+                      child: const Text('Belum punya akun? Registrasi Akun Warga Di Sini', style: TextStyle(color: Color(0xFF334E68), fontSize: 12)),
                     )
                   ],
                 ),
