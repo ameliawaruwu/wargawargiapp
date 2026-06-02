@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
+import '../theme/app_colors.dart';
+import 'profil_screen.dart';
 
 class BerandaPage extends StatefulWidget {
   final String namaWarga;
@@ -21,11 +26,27 @@ class _BerandaPageState extends State<BerandaPage> {
   int _totalKeluar = 0;
   List<Map<String, dynamic>> _aktivitasTerakhir = [];
   bool _isCalculated = false;
+  String _namaWarga = '';
+  String _roleUser = '';
+  String? _fotoProfilBase64;
 
   @override
   void initState() {
     super.initState();
+    _loadProfileInfo();
     _hitungMekanismeFinansial();
+  }
+
+  Future<void> _loadProfileInfo() async {
+    final sp = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _namaWarga = sp.getString('nama_warga') ?? '';
+        _roleUser = sp.getString('role_user') ?? '';
+        final nik = sp.getString('nik') ?? '';
+        _fotoProfilBase64 = sp.getString('foto_profil_$nik');
+      });
+    }
   }
 
   Future<void> _hitungMekanismeFinansial() async {
@@ -60,7 +81,7 @@ class _BerandaPageState extends State<BerandaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: _hitungMekanismeFinansial,
         child: SingleChildScrollView(
@@ -75,32 +96,40 @@ class _BerandaPageState extends State<BerandaPage> {
                 children: [
                   Row(
                     children: [
-                      const CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Color(0xFF6366F1),
-                        child: Icon(Icons.person, color: Colors.white, size: 26),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilScreen())).then((_) => _loadProfileInfo());
+                        },
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundColor: AppColors.primary,
+                          backgroundImage: _fotoProfilBase64 != null ? MemoryImage(base64Decode(_fotoProfilBase64!)) : null,
+                          child: _fotoProfilBase64 == null ? const Icon(Icons.person, color: Colors.white, size: 26) : null,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.namaWarga.isEmpty ? "Warga Mandiri" : widget.namaWarga,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                            _namaWarga.isEmpty ? (widget.namaWarga.isEmpty ? "Warga Mandiri" : widget.namaWarga) : _namaWarga,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: widget.roleUser == "Pengurus RT" ? Colors.orange[50] : Colors.blue[50],
+                              color: (_roleUser.isEmpty ? widget.roleUser : _roleUser) == "Pengurus RT"
+                                  ? AppColors.primary.withOpacity(0.14)
+                                  : AppColors.secondary.withOpacity(0.14),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              widget.roleUser.isEmpty ? "Warga Mandiri" : widget.roleUser, 
+                              _roleUser.isEmpty ? (widget.roleUser.isEmpty ? "Warga Mandiri" : widget.roleUser) : _roleUser, 
                               style: TextStyle(
                                 fontSize: 10, 
                                 fontWeight: FontWeight.bold,
-                                color: widget.roleUser == "Pengurus RT" ? Colors.orange[700] : Colors.blue[700],
+                                color: (_roleUser.isEmpty ? widget.roleUser : _roleUser) == "Pengurus RT" ? AppColors.primary : AppColors.secondary,
                               ),
                             ),
                           ),
@@ -108,26 +137,37 @@ class _BerandaPageState extends State<BerandaPage> {
                       ),
                     ],
                   ),
-                  const Icon(Icons.notifications_none_rounded, color: Color(0xFF64748B)),
+                  const Icon(Icons.notifications_none_rounded, color: AppColors.secondary),
                 ],
               ),
               
               const SizedBox(height: 24),
 
-              // === CARD KAS UNGU ===
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)]),
+                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Total Saldo Kas Lingkungan', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    const SizedBox(height: 6),
-                    Text('Rp $_totalSaldo', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                    Text(
+                      (_roleUser.isEmpty ? widget.roleUser : _roleUser) == 'Pengurus RT'
+                          ? 'Dashboard Pengurus RT'
+                          : 'Dashboard Warga Mandiri',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      (_roleUser.isEmpty ? widget.roleUser : _roleUser) == 'Pengurus RT'
+                          ? 'Kelola pengajuan surat, kas RT, dan keluhan warga di lingkungan.'
+                          : 'Pantau kas lingkunganmu dan ajukan layanan administrasi secara cepat.',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Total Saldo Kas: Rp $_totalSaldo', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -135,18 +175,67 @@ class _BerandaPageState extends State<BerandaPage> {
                         _buildMiniStat("Masuk", _totalMasuk, Icons.arrow_downward, Colors.greenAccent),
                         _buildMiniStat("Keluar", _totalKeluar, Icons.arrow_upward, Colors.redAccent),
                       ],
-                    )
+                    ),
+                    const SizedBox(height: 18),
+                    const Text('Area prioritas saat ini', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _InfoChip(label: 'Iuran RT'),
+                        _InfoChip(label: 'Surat Warga'),
+                        _InfoChip(label: 'Keluhan & Saran'),
+                      ],
+                    ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-              const Text('Aktivitas Terkini', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B))),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildDashboardAction(
+                    icon: Icons.edit_document,
+                    label: 'Dokumen Surat',
+                    description: (_roleUser.isEmpty ? widget.roleUser : _roleUser) == 'Pengurus RT'
+                        ? 'Surat Masuk RT'
+                        : 'Ajukan surat warga',
+                  ),
+                  _buildDashboardAction(
+                    icon: Icons.account_balance_wallet,
+                    label: 'Kas Lingkungan',
+                    description: 'Pantau saldo dan mutasi kas',
+                  ),
+                  _buildDashboardAction(
+                    icon: Icons.chat_bubble,
+                    label: 'Kritik & Saran',
+                    description: 'Layanan aduan warga',
+                  ),
+                  _buildDashboardAction(
+                    icon: Icons.person,
+                    label: 'Profil',
+                    description: 'Data dan foto Anda',
+                  ),
+                ],
+              ),
+  
+              const SizedBox(height: 24),
+              const Text('Aktivitas Terkini', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary)),
               const SizedBox(height: 12),
 
               // === LIST RIWAYAT ===
               _aktivitasTerakhir.isEmpty 
-                ? const Text("Belum ada data aktivitas kas.", style: TextStyle(color: Colors.grey, fontSize: 13)) 
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SizedBox(height: 8),
+                      Text('Belum ada data aktivitas kas.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      SizedBox(height: 8),
+                      Text('Transaksi masuk dapat berupa iuran RT, sumbangan, atau dana kegiatan masyarakat.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    ],
+                  )
                 : Column(
                     children: _aktivitasTerakhir.map((log) => Container(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -178,6 +267,34 @@ class _BerandaPageState extends State<BerandaPage> {
     );
   }
 
+  Widget _buildDashboardAction({required IconData icon, required String label, required String description}) {
+    return InkWell(
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gunakan menu bawah untuk membuka $label.'), backgroundColor: AppColors.primary),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: (MediaQuery.of(context).size.width - 72) / 2,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 24),
+            const SizedBox(height: 14),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text(description, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMiniStat(String label, int nilai, IconData icon, Color warna) {
     return Row(
       children: [
@@ -191,6 +308,24 @@ class _BerandaPageState extends State<BerandaPage> {
           ],
         )
       ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+
+  const _InfoChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white24,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }
