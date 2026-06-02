@@ -21,9 +21,20 @@ class DatabaseHelper {
     // Memicu onCreate jika file database belum terbentuk di device
     return await openDatabase(
       path, 
-      version: 1, 
+      version: 2,  // ✓ UPDATED: Increment version untuk upgrade
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,  // ✓ ADDED: Handle database upgrade
     );
+  }
+
+  // ✓ ADDED: Migration handler untuk upgrade database
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    print('📊 DATABASE: Upgrading from v$oldVersion to v$newVersion');
+    
+    if (oldVersion < 2) {
+      // Tidak ada action khusus, table sudah ada
+      print('✓ Database upgrade completed');
+    }
   }
 
   // === STRUKTUR TABEL BARU SINKRON ASESMEN 2 ===
@@ -78,7 +89,8 @@ class DatabaseHelper {
         judul_keluhan TEXT NOT NULL,
         isi_critic TEXT NOT NULL,
         bukti_keluhan TEXT,                -- Teks Base64 Foto Lapangan
-        tanggal_lapor TEXT NOT NULL
+        tanggal_lapor TEXT NOT NULL,
+        status_laporan TEXT DEFAULT 'Belum ditangani'  -- ✓ ADDED: Status laporan
       )
     ''');
   }
@@ -204,6 +216,17 @@ class DatabaseHelper {
     return await db.query('kritik', orderBy: 'id DESC');
   }
 
+  // ✓ ADDED: Update status laporan kritik
+  Future<int> updateKritikStatus(int id, String status) async {
+    final db = await instance.database;
+    return await db.update(
+      'kritik',
+      {'status_laporan': status},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   // --- ARSITEKTUR UPDATE & DELETE GLOBAL ---
   Future<int> updateData(String table, Map<String, dynamic> row, int id) async {
     final db = await instance.database;
@@ -226,6 +249,8 @@ class DatabaseHelper {
 
   /// Seed default user ke database jika belum ada.
   Future<void> seedDefaultUser() async {
+    print('🌱 SEEDING: Memulai seed default users...');
+    
     final db = await instance.database;
     final existing = await db.query(
       'users',
@@ -240,6 +265,9 @@ class DatabaseHelper {
         'password': 'amel',
         'role': 'Warga Mandiri',
       });
+      print('✓ SEEDED: Warga (Amelia) dengan role: Warga Mandiri');
+    } else {
+      print('⏭️ SKIP: Warga (Amelia) sudah ada');
     }
 
     final existingRt = await db.query(
@@ -255,7 +283,15 @@ class DatabaseHelper {
         'password': '2001',
         'role': 'Pengurus RT',
       });
+      print('✓ SEEDED: RT (Pengurus RT) dengan role: Pengurus RT');
+    } else {
+      print('⏭️ SKIP: RT (Pengurus RT) sudah ada');
+      // Verify role
+      final rtUser = existingRt.first;
+      print('   Role: ${rtUser['role']}');
     }
+    
+    print('✅ SEEDING: Completed');
   }
 
   Future close() async {

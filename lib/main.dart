@@ -5,7 +5,11 @@ import 'theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  print('🚀 APP: Starting application...');
+  
   await DatabaseHelper.instance.seedDefaultUser();
+  
+  print('✅ APP: Ready to run');
   runApp(const WargaWargiApp());
 }
 

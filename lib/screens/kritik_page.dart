@@ -81,6 +81,7 @@ class _KritikPageState extends State<KritikPage> {
       'judul_keluhan': _judulCtrl.text,
       'isi_critic': _isiCtrl.text,
       'bukti_keluhan': _base64BuktiKeluhan!,
+      'status_laporan': 'Belum ditangani',  // ✓ ADDED: Default status
     });
     _judulCtrl.clear(); _isiCtrl.clear();
     setState(() { _base64BuktiKeluhan = null; });
@@ -261,7 +262,35 @@ class _KritikPageState extends State<KritikPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Pelapor: ${item['nama_pelapor']}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                                Expanded(
+                                  child: Text('Pelapor: ${item['nama_pelapor']}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                                ),
+                                const SizedBox(width: 8),
+                                // ✓ ADDED: Status Badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: (item['status_laporan'] ?? 'Belum ditangani') == 'Selesai' ? Colors.green[100] : Colors.orange[100],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: (item['status_laporan'] ?? 'Belum ditangani') == 'Selesai' ? Colors.green : Colors.orange,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    item['status_laporan'] ?? 'Belum ditangani',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: (item['status_laporan'] ?? 'Belum ditangani') == 'Selesai' ? Colors.green[700] : Colors.orange[700],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(

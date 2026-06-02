@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
-import 'home_screen.dart'; 
+import 'home_screen.dart';
+import 'rt_home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _nikCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  bool _obscurePassword = true;  // ✓ ADDED: Password visibility state
 
   Future<void> _prosesLoginWarga() async {
     if (_nikCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
@@ -30,26 +32,50 @@ class _LoginScreenState extends State<LoginScreen> {
       await sp.setBool('is_logged_in', true);
       await sp.setString('nik', user['nik']);
       await sp.setString('nama_warga', user['nama']);
-      await sp.setString('role_user', 'Warga Mandiri');
+      
+      // ✓ PERBAIKAN: Ambil role dari database dan simpan dengan benar
+      final roleFromDb = user['role'] ?? 'Warga Mandiri';
+      print('🔐 LOGIN: Role dari database = $roleFromDb');
+      await sp.setString('role_user', roleFromDb);
       await sp.setString('kode_wilayah', 'RT10_RW04');
       await sp.setInt('total_akses_aplikasi', 1);
       await sp.setBool('fitur_dark_tema', false);
+      
+      // Verifikasi bahwa role tersimpan dengan benar
+      final savedRole = sp.getString('role_user');
+      print('✓ SAVED: Role yang tersimpan = $savedRole');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✓ Selamat datang kembali, ${user['nama']}!'), backgroundColor: Colors.green),
+          SnackBar(content: Text('✓ Selamat datang, ${user['nama']}!'), backgroundColor: Colors.green),
         );
         
-        // Menuju ke HomeScreen
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        // ✓ PERBAIKAN: Routing berdasarkan role dengan logic yang lebih jelas
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        final role = savedRole ?? 'Warga Mandiri';
+        print('📍 ROUTING: Mengecek role = $role');
+        
+        Widget nextScreen;
+        if (role.contains('RT') || role.contains('Pengurus') || role.toLowerCase().contains('rt')) {
+          print('✅ MASUK KE: RtHomeScreen');
+          nextScreen = const RtHomeScreen();
+        } else {
+          print('✅ MASUK KE: HomeScreen (Warga)');
+          nextScreen = const HomeScreen();
+        }
+        
+        if (mounted) {
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (_) => nextScreen),
+          );
+        }
       }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('NIK atau Password salah / belum terdaftar!'), backgroundColor: Colors.redAccent),
+          const SnackBar(content: Text('❌ NIK atau Password salah / belum terdaftar!'), backgroundColor: Colors.redAccent),
         );
       }
     }
@@ -83,8 +109,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _passCtrl, 
-                      obscureText: true, 
-                      decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: const OutlineInputBorder(),
+                        // ✓ ADDED: Password visibility toggle icon
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: const Color(0xFF334E68),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     SizedBox(

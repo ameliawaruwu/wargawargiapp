@@ -1,10 +1,58 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
+import 'home_screen.dart';
+import 'rt_home_screen.dart';
 import '../theme/app_colors.dart';
 
-class LandingPage extends StatelessWidget {
+class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
+
+  @override
+  State<LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<LandingPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    // Tambah delay kecil untuk memastikan SharedPreferences siap
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    final sp = await SharedPreferences.getInstance();
+    final isLoggedIn = sp.getBool('is_logged_in') ?? false;
+    
+    print('🔍 LANDING: isLoggedIn = $isLoggedIn');
+    
+    if (isLoggedIn) {
+      final role = sp.getString('role_user') ?? 'Warga Mandiri';
+      print('🔍 LANDING: Role dari SharedPreferences = "$role"');
+      
+      Widget nextScreen;
+      // ✓ PERBAIKAN: Cek role dengan logic yang lebih jelas dan robust
+      if (role.contains('RT') || role.contains('Pengurus') || role.toLowerCase().contains('rt')) {
+        print('✅ LANDING: Redirect ke RtHomeScreen');
+        nextScreen = const RtHomeScreen();
+      } else {
+        print('✅ LANDING: Redirect ke HomeScreen (Warga)');
+        nextScreen = const HomeScreen();
+      }
+      
+      if (mounted) {
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (_) => nextScreen),
+        );
+      }
+    } else {
+      print('🔍 LANDING: User belum login, tampilkan landing page');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

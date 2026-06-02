@@ -25,8 +25,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
   bool _obscurePass = true;
   String _nik = '';
   String _role = 'Warga Mandiri';
-  String _phoneWarga = '-';   // Tampungan data No. HP
-  String _alamatWarga = '-';  // Tampungan data Alamat
+  String _phoneWarga = '-';   
+  String _alamatWarga = '-'; 
   String _currentPassword = '';
   String _statusMessage = '';
   String? _fotoProfilBase64;
