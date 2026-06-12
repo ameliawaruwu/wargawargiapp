@@ -15,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _nikCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  bool _obscurePassword = true;  // ✓ ADDED: Password visibility state
+  bool _obscurePassword = true;  
 
   Future<void> _prosesLoginWarga() async {
     if (_nikCtrl.text.isEmpty || _passCtrl.text.isEmpty) {

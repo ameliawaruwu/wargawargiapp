@@ -14,11 +14,16 @@ class RtKasPage extends StatefulWidget {
 class _RtKasPageState extends State<RtKasPage> {
   int _currentTabIndex = 0;
   List<Map<String, dynamic>> _allKasData = [];
+  List<Map<String, dynamic>> _masterIuran = []; // ✓ NEW: Master iuran list
   late SharedPreferences _prefs;
 
   // Shared Preferences Keys
   static const String _tabIndexKey = 'rt_kas_tab_index';
   static const String _lastUpdateKey = 'rt_kas_last_update';
+
+  // Form controllers untuk create kategori
+  final _namaIuranController = TextEditingController();
+  final _nominalController = TextEditingController();
 
   @override
   void initState() {
@@ -29,6 +34,7 @@ class _RtKasPageState extends State<RtKasPage> {
   Future<void> _initializePreferences() async {
     _prefs = await SharedPreferences.getInstance();
     _loadSavedTabIndex();
+    _loadMasterIuran(); // ✓ NEW: Load master iuran
     _refreshKasList();
   }
 
@@ -45,7 +51,171 @@ class _RtKasPageState extends State<RtKasPage> {
   Future<void> _updateLastRefreshTime() async {
     await _prefs.setString(_lastUpdateKey, DateTime.now().toIso8601String());
   }
+// ✓ NEW: Load master iuran dari database
+  Future<void> _loadMasterIuran() async {
+    try {
+      final data = await DatabaseHelper.instance.getMasterIuran();
+      if (mounted) {
+        setState(() {
+          _masterIuran = data;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading master iuran: $e');
+    }
+  }
 
+  // ✓ NEW: Create kategori iuran baru
+  Future<void> _createMasterIuran(String namaIuran, String nominalWajib) async {
+    try {
+      await DatabaseHelper.instance.insertMasterIuran({
+        'nama_iuran': namaIuran,
+        'nominal_wajib': nominalWajib,
+      });
+      
+      _loadMasterIuran(); // Reload list
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Text('Kategori iuran berhasil ditambahkan!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ✓ NEW: Show form dialog untuk create kategori iuran
+  void _showCreateIuranDialog() {
+    _namaIuranController.clear();
+    _nominalController.clear();
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(30),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.add_circle, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Buat Kategori Iuran Baru', style: TextStyle(fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tambahkan kategori iuran baru ke sistem:', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 16),
+              
+              TextField(
+                controller: _namaIuranController,
+                decoration: InputDecoration(
+                  labelText: 'Nama Kategori Iuran',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.category, color: AppColors.secondary),
+                  hintText: 'Contoh: Iuran Listrik',
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              TextField(
+                controller: _nominalController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Nominal Wajib (Rp)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.attach_money, color: AppColors.secondary),
+                  hintText: 'Contoh: 50000',
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withAlpha(40)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Nominal ini akan menjadi default untuk dropdown kategori iuran di halaman warga',
+                        style: TextStyle(fontSize: 11, color: Colors.black87, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              if (_namaIuranController.text.isEmpty || _nominalController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('⚠️ Semua field harus diisi!'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              
+              _createMasterIuran(_namaIuranController.text, _nominalController.text);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            icon: const Icon(Icons.add_circle, size: 18),
+            label: const Text('Tambahkan'),
+          )
+        ],
+      ),
+    );
+  }
+
+  
   Future<void> _refreshKasList() async {
     final data = await DatabaseHelper.instance.getKas();
     await _updateLastRefreshTime();
@@ -295,6 +465,16 @@ Dibagikan melalui Warga Wargi App
           ),
         ],
       ),
+      
+      // ✓ NEW: FAB untuk create kategori iuran
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showCreateIuranDialog,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Kategori Iuran'),
+        tooltip: 'Tambah Kategori Iuran Baru',
+      ),
     );
   }
 
@@ -504,5 +684,10 @@ Dibagikan melalui Warga Wargi App
       ),
     );
   }
-}
+  @override
+  void dispose() {
+    _namaIuranController.dispose();
+    _nominalController.dispose();
+    super.dispose();
+  }}
 

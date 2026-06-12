@@ -21,7 +21,7 @@ class DatabaseHelper {
     // Memicu onCreate jika file database belum terbentuk di device
     return await openDatabase(
       path, 
-      version: 2,  // ✓ UPDATED: Increment version untuk upgrade
+      version: 3,  // ✓ UPDATED: Increment version untuk upgrade ke v3 (Master Iuran)
       onCreate: _createDB,
       onUpgrade: _upgradeDB,  // ✓ ADDED: Handle database upgrade
     );
@@ -33,7 +33,20 @@ class DatabaseHelper {
     
     if (oldVersion < 2) {
       // Tidak ada action khusus, table sudah ada
-      print('✓ Database upgrade completed');
+      print('✓ Database upgrade v1→v2 completed');
+    }
+    
+    if (oldVersion < 3) {
+      // Migrasi dari v2 ke v3: Tambah tabel master iuran
+      print('📋 Creating tabel_master_iuran for v3...');
+      await db.execute('''
+        CREATE TABLE tabel_master_iuran (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nama_iuran TEXT NOT NULL UNIQUE,
+          nominal_wajib TEXT NOT NULL
+        )
+      ''');
+      print('✓ Tabel master iuran created successfully');
     }
   }
 
@@ -80,6 +93,33 @@ class DatabaseHelper {
         tanggal_setor TEXT NOT NULL        -- ISO 8601 String Otomatis (DateTime)
       )
     ''');
+
+    // 5. TABEL MASTER IURAN — Dynamic kategori iuran (Asesmen 3 - Amelia)
+    await db.execute('''
+      CREATE TABLE tabel_master_iuran (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nama_iuran TEXT NOT NULL UNIQUE,
+        nominal_wajib TEXT NOT NULL
+      )
+    ''');
+
+    // ✓ SEED: Default master iuran
+    await db.insert('tabel_master_iuran', {
+      'nama_iuran': 'Iuran Kebersihan',
+      'nominal_wajib': '50000'
+    });
+    await db.insert('tabel_master_iuran', {
+      'nama_iuran': 'Iuran Keamanan',
+      'nominal_wajib': '30000'
+    });
+    await db.insert('tabel_master_iuran', {
+      'nama_iuran': 'Kas Sosial RT',
+      'nominal_wajib': '20000'
+    });
+    await db.insert('tabel_master_iuran', {
+      'nama_iuran': 'Keperluan Infrastruktur',
+      'nominal_wajib': '75000'
+    });
 
     // 4. Tabel Kritik & Aduan Fasum (Anggota 3)
     await db.execute('''
@@ -222,6 +262,51 @@ class DatabaseHelper {
     return await db.update(
       'kritik',
       {'status_laporan': status},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // === CRUD OPERASI: MODUL MASTER IURAN (Asesmen 3 - Amelia) ===
+  /// Insert kategori iuran baru ke master tabel
+  Future<int> insertMasterIuran(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.insert('tabel_master_iuran', row);
+  }
+
+  /// Ambil semua kategori iuran dari master tabel
+  Future<List<Map<String, dynamic>>> getMasterIuran() async {
+    final db = await instance.database;
+    return await db.query('tabel_master_iuran', orderBy: 'id ASC');
+  }
+
+  /// Ambil satu kategori iuran berdasarkan ID
+  Future<Map<String, dynamic>?> getMasterIuranById(int id) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'tabel_master_iuran',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  /// Update kategori iuran
+  Future<int> updateMasterIuran(int id, Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.update(
+      'tabel_master_iuran',
+      row,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Delete kategori iuran
+  Future<int> deleteMasterIuran(int id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'tabel_master_iuran',
       where: 'id = ?',
       whereArgs: [id],
     );

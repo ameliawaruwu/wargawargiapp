@@ -109,24 +109,25 @@ class _KasPageState extends State<KasPage> {
       _imageBytes = null;
       _base64Image = null;
       _editingKasId = null;
+      _showQrisPreview = false;
     });
   }
 
   // === INTERAKSI HARDWARE: IMAGE PICKER & BASE64 ENCODING ===
   Future<void> _pilihGambarBukti(ImageSource source) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source, imageQuality: 50); // Kompres 50% biar DB ringan
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 50);
 
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       setState(() {
         _imageBytes = bytes;
-        _base64Image = base64Encode(bytes); // Mengonversi berkas gambar biner ke teks String Base64
+        _base64Image = base64Encode(bytes);
       });
     }
   }
 
-  // === ADVANCED CREATE + LOGIKA VALIDATION GANDA ===
+  // === LOGIKA SIMPAN DENGAN VALIDATION GANDA ===
   Future<void> _simpanTransaksiKas() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -139,7 +140,7 @@ class _KasPageState extends State<KasPage> {
 
     setState(() { _isUploading = true; });
 
-    // VALIDASI KOMPLEKS: Cek duplikasi pembayaran di bulan yang sama untuk transaksi MASUK
+    // VALIDASI KOMPLEKS: Cek duplikasi pembayaran di bulan yang sama
     if (_tipeTransaksi == 'MASUK') {
       bool sudahBayar = _riwayatKas.any((item) => 
         item['jenis_iuran'] == _jenisIuranSelected && 
@@ -178,25 +179,23 @@ class _KasPageState extends State<KasPage> {
       await DatabaseHelper.instance.insertKas(kasRow);
     }
 
-    // Reset State Form input
     _nominalController.clear();
     _keteranganController.clear();
     setState(() {
       _imageBytes = null;
       _base64Image = null;
+      _isUploading = false;
       _showQrisPreview = false;
     });
 
     _ambilRiwayatKas();
     
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_editingKasId != null ? '✅ Transaksi Kas berhasil diperbarui!' : '✅ Transaksi Kas berhasil dicatat ke sistem!'), 
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_editingKasId != null ? '✅ Transaksi Kas berhasil diperbarui!' : '✅ Transaksi Kas berhasil dicatat ke sistem!'), 
+        backgroundColor: Colors.green
+      ),
+    );
 
     if (_editingKasId != null) {
       setState(() {
@@ -308,9 +307,9 @@ class _KasPageState extends State<KasPage> {
                             prefixIcon: Icon(Icons.category, color: AppColors.secondary),
                           ),
                           items: _masterIuran.map((iuran) {
-                            final String nama = iuran['nama_iuran'] as String;
+                            final nama = iuran['nama_iuran'];
                             final nominal = iuran['nominal_wajib'];
-                            return DropdownMenuItem<String>(
+                            return DropdownMenuItem(
                               value: nama,
                               child: Text('$nama (Rp $nominal)'),
                             );
