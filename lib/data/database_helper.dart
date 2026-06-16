@@ -522,7 +522,40 @@ class DatabaseHelper {
       print('   Role: ${rtUser['role']}');
     }
     
+    await seedDefaultMasterIuran();
     print('✅ SEEDING: Completed');
+  }
+
+  /// Seed default master iuran ke database jika kosong.
+  Future<void> seedDefaultMasterIuran() async {
+    final db = await instance.database;
+    final existing = await db.query('tabel_master_iuran');
+    if (existing.isEmpty) {
+      print('🌱 SEEDING: Memulai seed default master iuran...');
+      await db.insert('tabel_master_iuran', {
+        'nama_iuran': 'Iuran Kebersihan',
+        'nominal_wajib': '50000',
+        'tipe': 'IURAN'
+      });
+      await db.insert('tabel_master_iuran', {
+        'nama_iuran': 'Iuran Keamanan',
+        'nominal_wajib': '30000',
+        'tipe': 'IURAN'
+      });
+      await db.insert('tabel_master_iuran', {
+        'nama_iuran': 'Kas Sosial RT',
+        'nominal_wajib': '20000',
+        'tipe': 'KAS'
+      });
+      await db.insert('tabel_master_iuran', {
+        'nama_iuran': 'Keperluan Infrastruktur',
+        'nominal_wajib': '75000',
+        'tipe': 'IURAN'
+      });
+      print('✓ SEEDED: Default master iuran successfully');
+    } else {
+      print('⏭️ SKIP: Master iuran sudah terisi');
+    }
   }
 
   Future close() async {
