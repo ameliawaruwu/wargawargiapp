@@ -32,13 +32,15 @@ class _RtKasPageState extends State<RtKasPage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await DatabaseHelper.instance.deleteMasterIuran(id);
-      _loadMasterIuran();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('🗑️ Kategori berhasil dihapus.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      await _loadMasterIuran();
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('🗑️ Kategori berhasil dihapus.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } catch (e) {
       print('❌ Error deleting master iuran: $e');
     }
@@ -85,7 +87,7 @@ class _RtKasPageState extends State<RtKasPage> {
   }
 
   // ✓ NEW: Create kategori baru (Kas atau Iuran)
-  Future<void> _createMasterIuran(String namaIuran, String nominalWajib, String tipe) async {
+  Future<bool> _createMasterIuran(String namaIuran, String nominalWajib, String tipe) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await DatabaseHelper.instance.insertMasterIuran({
@@ -94,40 +96,46 @@ class _RtKasPageState extends State<RtKasPage> {
         'tipe': tipe,
       });
       
-      _loadMasterIuran(); // Reload list
+      await _loadMasterIuran(); // Reload list
       
-      messenger.showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              Text('Kategori ${tipe == 'KAS' ? 'Kas' : 'Iuran'} berhasil ditambahkan!'),
-            ],
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('Kategori ${tipe == 'KAS' ? 'Kas' : 'Iuran'} berhasil ditambahkan!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+        );
+      }
+      return true;
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('❌ Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return false;
     }
   }
 
   // ✓ NEW: Show form dialog untuk create kategori iuran / kas
-  void _showCreateCategoryDialog(String tipe) {
+  Future<bool> _showCreateCategoryDialog(String tipe) async {
     _namaIuranController.clear();
     _nominalController.clear();
     final isKas = tipe == 'KAS';
     
-    showDialog(
+    final bool? result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -213,11 +221,11 @@ class _RtKasPageState extends State<RtKasPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Batal', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton.icon(
-            onPressed: () {
+            onPressed: () async {
               if (_namaIuranController.text.isEmpty || _nominalController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -228,8 +236,10 @@ class _RtKasPageState extends State<RtKasPage> {
                 return;
               }
               
-              _createMasterIuran(_namaIuranController.text, _nominalController.text, tipe);
-              Navigator.pop(ctx);
+              final success = await _createMasterIuran(_namaIuranController.text, _nominalController.text, tipe);
+              if (success && ctx.mounted) {
+                Navigator.pop(ctx, true);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: isKas ? Colors.teal : AppColors.primary,
@@ -243,6 +253,7 @@ class _RtKasPageState extends State<RtKasPage> {
         ],
       ),
     );
+    return result ?? false;
   }
 
   // ✓ NEW: Bottom Sheet Kelola Kategori (Kas & Iuran)
@@ -412,8 +423,11 @@ class _RtKasPageState extends State<RtKasPage> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            _showCreateCategoryDialog('KAS');
+                          onPressed: () async {
+                            final success = await _showCreateCategoryDialog('KAS');
+                            if (success) {
+                              setModalState(() {});
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
@@ -429,8 +443,11 @@ class _RtKasPageState extends State<RtKasPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            _showCreateCategoryDialog('IURAN');
+                          onPressed: () async {
+                            final success = await _showCreateCategoryDialog('IURAN');
+                            if (success) {
+                              setModalState(() {});
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,

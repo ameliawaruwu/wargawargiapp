@@ -529,32 +529,69 @@ class DatabaseHelper {
   /// Seed default master iuran ke database jika kosong.
   Future<void> seedDefaultMasterIuran() async {
     final db = await instance.database;
-    final existing = await db.query('tabel_master_iuran');
-    if (existing.isEmpty) {
-      print('🌱 SEEDING: Memulai seed default master iuran...');
-      await db.insert('tabel_master_iuran', {
-        'nama_iuran': 'Iuran Kebersihan',
-        'nominal_wajib': '50000',
-        'tipe': 'IURAN'
-      });
-      await db.insert('tabel_master_iuran', {
-        'nama_iuran': 'Iuran Keamanan',
-        'nominal_wajib': '30000',
-        'tipe': 'IURAN'
-      });
-      await db.insert('tabel_master_iuran', {
-        'nama_iuran': 'Kas Sosial RT',
-        'nominal_wajib': '20000',
-        'tipe': 'KAS'
-      });
-      await db.insert('tabel_master_iuran', {
-        'nama_iuran': 'Keperluan Infrastruktur',
-        'nominal_wajib': '75000',
-        'tipe': 'IURAN'
-      });
-      print('✓ SEEDED: Default master iuran successfully');
-    } else {
-      print('⏭️ SKIP: Master iuran sudah terisi');
+    
+    // Verifikasi apakah tabel_master_iuran ada, jika tidak buat baru
+    try {
+      await db.rawQuery('SELECT 1 FROM tabel_master_iuran LIMIT 1');
+    } catch (e) {
+      print('⚠️ Tabel tabel_master_iuran belum terbentuk, membuat tabel sekarang...');
+      try {
+        await db.execute('''
+          CREATE TABLE tabel_master_iuran (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nama_iuran TEXT NOT NULL UNIQUE,
+            nominal_wajib TEXT NOT NULL,
+            tipe TEXT DEFAULT 'IURAN'
+          )
+        ''');
+      } catch (ex) {
+        print('❌ Error membuat tabel_master_iuran: $ex');
+        return; // Jangan lanjut jika pembuatan tabel gagal
+      }
+    }
+    
+    // Verifikasi skema kolom 'tipe' (mencegah error tabel versi lama)
+    try {
+      await db.rawQuery('SELECT tipe FROM tabel_master_iuran LIMIT 1');
+    } catch (e) {
+      print('⚠️ Column "tipe" is missing in tabel_master_iuran, adding it now...');
+      try {
+        await db.execute("ALTER TABLE tabel_master_iuran ADD COLUMN tipe TEXT DEFAULT 'IURAN'");
+      } catch (ex) {
+        print('❌ Error adding column "tipe": $ex');
+      }
+    }
+
+    try {
+      final existing = await db.query('tabel_master_iuran');
+      if (existing.isEmpty) {
+        print('🌱 SEEDING: Memulai seed default master iuran...');
+        await db.insert('tabel_master_iuran', {
+          'nama_iuran': 'Iuran Kebersihan',
+          'nominal_wajib': '50000',
+          'tipe': 'IURAN'
+        });
+        await db.insert('tabel_master_iuran', {
+          'nama_iuran': 'Iuran Keamanan',
+          'nominal_wajib': '30000',
+          'tipe': 'IURAN'
+        });
+        await db.insert('tabel_master_iuran', {
+          'nama_iuran': 'Kas Sosial RT',
+          'nominal_wajib': '20000',
+          'tipe': 'KAS'
+        });
+        await db.insert('tabel_master_iuran', {
+          'nama_iuran': 'Keperluan Infrastruktur',
+          'nominal_wajib': '75000',
+          'tipe': 'IURAN'
+        });
+        print('✓ SEEDED: Default master iuran successfully');
+      } else {
+        print('⏭️ SKIP: Master iuran sudah terisi');
+      }
+    } catch (e) {
+      print('❌ Error querying/seeding tabel_master_iuran: $e');
     }
   }
 

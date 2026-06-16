@@ -80,8 +80,11 @@ class _KasPageState extends State<KasPage> {
       if (mounted) {
         setState(() {
           _masterIuran = data;
-          if (_masterIuran.isNotEmpty && _jenisIuranSelected == 'Iuran Kebersihan') {
-            // Set ke pilihan pertama dari master
+          // Cek apakah kategori yang dipilih saat ini ada dalam daftar master
+          final exists = _masterIuran.any((item) => item['nama_iuran'] == _jenisIuranSelected);
+          if (!exists && _masterIuran.isNotEmpty) {
+            _jenisIuranSelected = _masterIuran.first['nama_iuran'];
+          } else if (_masterIuran.isNotEmpty && _jenisIuranSelected == 'Iuran Kebersihan') {
             _jenisIuranSelected = _masterIuran.first['nama_iuran'];
           }
         });
@@ -183,6 +186,7 @@ class _KasPageState extends State<KasPage> {
       _imageBytes = null;
       _base64Image = null;
       _showQrisPreview = false;
+      _isUploading = false;
     });
 
     _ambilRiwayatKas();
@@ -283,6 +287,7 @@ class _KasPageState extends State<KasPage> {
 
                       // ✓ DYNAMIC MASTER IURAN DROPDOWN
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _masterIuran.isNotEmpty ? _jenisIuranSelected : null,
                         decoration: const InputDecoration(
                           labelText: 'Kategori Iuran',
@@ -294,7 +299,11 @@ class _KasPageState extends State<KasPage> {
                           final nominal = iuran['nominal_wajib'];
                           return DropdownMenuItem<String>(
                             value: nama,
-                            child: Text('$nama (Rp $nominal)'),
+                            child: Text(
+                              '$nama (Rp $nominal)',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -308,6 +317,7 @@ class _KasPageState extends State<KasPage> {
                       const SizedBox(height: 12),
 
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _bulanSelected,
                         decoration: const InputDecoration(
                           labelText: 'Periode Bulan',
