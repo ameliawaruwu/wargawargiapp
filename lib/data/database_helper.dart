@@ -20,6 +20,7 @@ class DatabaseHelper {
 
     // Memicu onCreate jika file database belum terbentuk di device
     return await openDatabase(
+      path,
       version: 5,  // ✓ UPDATED: Upgrade ke v5 untuk Skema Relasional (FOREIGN KEY) & Asesmen 3 (GPS)
       onConfigure: _onConfigure,
       onCreate: _createDB,
