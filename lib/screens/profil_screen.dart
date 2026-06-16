@@ -19,19 +19,17 @@ class _ProfilScreenState extends State<ProfilScreen> {
   final _formKey = GlobalKey<FormState>();
   final _namaCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _alamatCtrl = TextEditingController();
 
   bool _isLoading = true;
   bool _isSaving = false;
   bool _obscurePass = true;
   String _nik = '';
   String _role = 'Warga Mandiri';
-  String _phoneWarga = '-';   
-  String _alamatWarga = '-'; 
   String _currentPassword = '';
   String _statusMessage = '';
-  String? _fotoProfilBase64;
   Uint8List? _fotoProfilBytes;
-  bool _isPengurusRT = false;
 
   @override
   void initState() {
@@ -43,6 +41,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
   void dispose() {
     _namaCtrl.dispose();
     _passCtrl.dispose();
+    _phoneCtrl.dispose();
+    _alamatCtrl.dispose();
     super.dispose();
   }
 
@@ -70,15 +70,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
     setState(() {
       _nik = user['nik'] ?? '';
       _role = user['role'] ?? 'Warga Mandiri';
-      _isPengurusRT = _role == 'Pengurus RT';
       _namaCtrl.text = user['nama'] ?? '';
       _currentPassword = user['password'] ?? '';
+      _phoneCtrl.text = user['warga_phone'] ?? '';
+      _alamatCtrl.text = user['warga_alamat'] ?? '';
       
-      // TARIK DATA NO HP DAN ALAMAT DARI DATABASE
-      _phoneWarga = user['warga_phone'] ?? '-';
-      _alamatWarga = user['warga_alamat'] ?? '-';
-      
-      _fotoProfilBase64 = storedPhoto;
       _fotoProfilBytes = storedPhoto != null ? base64Decode(storedPhoto) : null;
       _isLoading = false;
     });
@@ -91,10 +87,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
       _isSaving = true;
     });
 
+    final messenger = ScaffoldMessenger.of(context);
     final updatedPassword = _passCtrl.text.isEmpty ? _currentPassword : _passCtrl.text;
     final updateRow = {
       'nama': _namaCtrl.text.trim(),
       'password': updatedPassword,
+      'warga_phone': _phoneCtrl.text.trim(),
+      'warga_alamat': _alamatCtrl.text.trim(),
     };
 
     final result = await DatabaseHelper.instance.updateUserByNik(_nik, updateRow);
@@ -102,17 +101,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
       final sp = await SharedPreferences.getInstance();
       await sp.setString('nama_warga', _namaCtrl.text.trim());
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil berhasil diperbarui.'), backgroundColor: Colors.green),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Profil berhasil diperbarui.'), backgroundColor: Colors.green),
+      );
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menyimpan profil. Coba lagi.'), backgroundColor: Colors.redAccent),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan profil. Coba lagi.'), backgroundColor: Colors.redAccent),
+      );
     }
 
     setState(() {
@@ -132,7 +127,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
     await prefs.setString('foto_profil_$_nik', encoded);
 
     setState(() {
-      _fotoProfilBase64 = encoded;
       _fotoProfilBytes = bytes;
     });
 
@@ -292,12 +286,12 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             _buildEditableField(label: 'Nama Lengkap', controller: _namaCtrl, hint: 'Masukkan nama lengkap'),
                             const SizedBox(height: 16),
                             
-                            // TAMPILKAN INFO NOMOR HP (READ-ONLY)
-                            _buildReadOnlyField(label: 'Nomor WhatsApp', value: _phoneWarga),
+                            // TAMPILKAN INFO NOMOR HP (EDITABLE)
+                            _buildEditableField(label: 'Nomor WhatsApp', controller: _phoneCtrl, hint: 'Masukkan nomor WhatsApp'),
                             const SizedBox(height: 16),
                             
-                            // TAMPILKAN INFO ALAMAT (READ-ONLY)
-                            _buildReadOnlyField(label: 'Alamat Domisili', value: _alamatWarga),
+                            // TAMPILKAN INFO ALAMAT (EDITABLE)
+                            _buildEditableField(label: 'Alamat Domisili', controller: _alamatCtrl, hint: 'Masukkan alamat domisili'),
                             const SizedBox(height: 16),
                             
                             _buildReadOnlyField(label: 'Peran Akun', value: _role),

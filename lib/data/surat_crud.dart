@@ -22,8 +22,8 @@ class SuratCrud {
   }
 
   // 2. Ambil Riwayat Surat Khusus Warga Tertentu (Untuk sisi Warga)
-  Future<List<Map<String, dynamic>>> ambilSuratWarga(String namaPemohon) async {
-    return await _dbHelper.getSurat(namaPemohon: namaPemohon);
+  Future<List<Map<String, dynamic>>> ambilSuratWarga(String pemohonNik) async {
+    return await _dbHelper.getSurat(pemohonNik: pemohonNik);
   }
 
   // 3. Ambil Semua Surat Tanpa Filter (Untuk sisi Pengurus RT)
