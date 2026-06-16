@@ -26,6 +26,7 @@ class _KasPageState extends State<KasPage> {
   String _bulanSelected = 'Mei';
   String _filterStatusSelected = 'SEMUA'; 
   String _roleUser = 'Warga Mandiri';
+  String _nik = '-';
   
   Uint8List? _imageBytes;
   String? _base64Image;
@@ -34,7 +35,7 @@ class _KasPageState extends State<KasPage> {
   List<Map<String, dynamic>> _masterIuran = []; // ✓ Dynamic master iuran
   int? _editingKasId;
   bool _showQrisPreview = false; // Toggle preview QRIS
-
+  
   final List<String> _listBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
   @override
@@ -43,7 +44,6 @@ class _KasPageState extends State<KasPage> {
     _loadKasSession();
     _loadKasPreferences();
     _loadMasterIuran(); // ✓ Load dynamic master iuran
-    _ambilRiwayatKas();
   }
 
   Future<void> _loadKasSession() async {
@@ -51,7 +51,9 @@ class _KasPageState extends State<KasPage> {
     if (mounted) {
       setState(() {
         _roleUser = sp.getString('role_user') ?? 'Warga Mandiri';
+        _nik = sp.getString('nik') ?? '-';
       });
+      _ambilRiwayatKas();
     }
   }
 
@@ -91,7 +93,7 @@ class _KasPageState extends State<KasPage> {
 
   // === READ DATA DARI SQLITE ===
   Future<void> _ambilRiwayatKas() async {
-    final data = await DatabaseHelper.instance.getKas(namaWarga: widget.namaWarga);
+    final data = await DatabaseHelper.instance.getKas(wargaNik: _nik);
     setState(() {
       _riwayatKas = data;
     });
@@ -157,7 +159,7 @@ class _KasPageState extends State<KasPage> {
     }
 
     final kasRow = {
-      'nama_warga': widget.namaWarga,
+      'warga_nik': _nik,
       'jenis_iuran': _jenisIuranSelected,
       'tipe_transaksi': _tipeTransaksi,
       'bulan_periode': _bulanSelected,

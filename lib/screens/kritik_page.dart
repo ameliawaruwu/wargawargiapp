@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
 import '../data/preferences_helper.dart';
 import '../theme/app_colors.dart';
@@ -21,6 +22,7 @@ class _KritikPageState extends State<KritikPage> {
   String? _base64BuktiKeluhan;
   String _namaPelapor = 'Warga';
   String _roleUser = 'Warga Mandiri';
+  String _nik = '-';
 
   @override
   void initState() {
@@ -37,18 +39,21 @@ class _KritikPageState extends State<KritikPage> {
 
   Future<void> _loadKritikSession() async {
     final sesi = await PreferencesHelper.ambilSesiLogin();
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
       _namaPelapor = sesi['nama_warga'] ?? 'Warga';
       _roleUser = sesi['role_user'] ?? 'Warga Mandiri';
+      _nik = prefs.getString('nik') ?? '-';
     });
-    debugPrint('🔍 KritikPage - Nama Pelapor: $_namaPelapor');
+    debugPrint('🔍 KritikPage - Nama Pelapor: $_namaPelapor, NIK: $_nik');
   }
 
   Future<void> _refreshData() async {
-    final sesi = await PreferencesHelper.ambilSesiLogin();
-    final namaFilter = sesi['nama_warga'] ?? _namaPelapor;
-    debugPrint('🔍 Query Kritik dengan nama: $namaFilter');
-    final data = await DatabaseHelper.instance.getKritik(namaPelapor: namaFilter);
+    final prefs = await SharedPreferences.getInstance();
+    final String? loggedNik = prefs.getString('nik');
+    final String? filterNik = _roleUser == 'Pengurus RT' ? null : (loggedNik ?? _nik);
+    debugPrint('🔍 Query Kritik dengan NIK: $filterNik');
+    final data = await DatabaseHelper.instance.getKritik(pelaporNik: filterNik);
     debugPrint('📊 Ditemukan ${data.length} data kritik');
     setState(() { _dataKritik = data; });
   }
@@ -68,20 +73,19 @@ class _KritikPageState extends State<KritikPage> {
       return;
     }
     
-    // Ambil nama terbaru dari SharedPreferences untuk memastikan konsisten
-    final sesi = await PreferencesHelper.ambilSesiLogin();
-    final namaAkhir = sesi['nama_warga'] ?? _namaPelapor;
-    debugPrint('💾 Menyimpan Kritik dengan nama: $namaAkhir');
+    final prefs = await SharedPreferences.getInstance();
+    final nikAkhir = prefs.getString('nik') ?? _nik;
+    debugPrint('💾 Menyimpan Kritik dengan NIK: $nikAkhir');
     
     final now = DateTime.now();
     final tglFormat = DateFormat('dd/MM/yyyy HH:mm').format(now);
     await DatabaseHelper.instance.insertKritik({
-      'nama_pelapor': namaAkhir,
+      'pelapor_nik': nikAkhir,
       'tanggal_lapor': tglFormat,
       'judul_keluhan': _judulCtrl.text,
       'isi_critic': _isiCtrl.text,
       'bukti_keluhan': _base64BuktiKeluhan!,
-      'status_laporan': 'Belum ditangani',  // ✓ ADDED: Default status
+      'status_laporan': 'Belum ditangani',
     });
     _judulCtrl.clear(); _isiCtrl.clear();
     setState(() { _base64BuktiKeluhan = null; });
