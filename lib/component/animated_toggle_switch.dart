@@ -16,6 +16,10 @@ class AnimatedToggleSwitchKas extends StatefulWidget {
   final ValueChanged<bool> onToggled;
   final String labelWarga;
   final String labelRT;
+  final String? indicatorLabelWarga;
+  final String? indicatorLabelRT;
+  final IconData? iconWarga;
+  final IconData? iconRT;
 
   const AnimatedToggleSwitchKas({
     super.key,
@@ -23,6 +27,10 @@ class AnimatedToggleSwitchKas extends StatefulWidget {
     required this.onToggled,
     this.labelWarga = 'Mode Iuran Warga',
     this.labelRT = 'Mode Kas RT',
+    this.indicatorLabelWarga,
+    this.indicatorLabelRT,
+    this.iconWarga,
+    this.iconRT,
   });
 
   @override
@@ -107,13 +115,9 @@ class _AnimatedToggleSwitchKasState extends State<AnimatedToggleSwitchKas>
                   curve: Curves.easeInOutCubic,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    color: widget.isRtMode
-                        ? const Color(0xFF2E7D32).withAlpha(20) // Hijau muda
-                        : const Color(0xFF1976D2).withAlpha(20), // Biru muda
+                    color: const Color(0xFF1976D2).withAlpha(20),
                     border: Border.all(
-                      color: widget.isRtMode
-                          ? const Color(0xFF2E7D32) // Hijau untuk RT
-                          : const Color(0xFF1976D2), // Biru untuk Warga
+                      color: const Color(0xFF1976D2),
                       width: 2,
                     ),
                   ),
@@ -135,12 +139,12 @@ class _AnimatedToggleSwitchKasState extends State<AnimatedToggleSwitchKas>
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         color: widget.isRtMode
-                            ? const Color(0xFF2E7D32) // Hijau untuk RT
+                            ? const Color(0xFF1565C0) // Biru tua untuk RT
                             : const Color(0xFF1976D2), // Biru untuk Warga
                         boxShadow: [
                           BoxShadow(
                             color: (widget.isRtMode
-                                    ? const Color(0xFF2E7D32)
+                                    ? const Color(0xFF1565C0)
                                     : const Color(0xFF1976D2))
                                 .withAlpha(60),
                             blurRadius: 8,
@@ -153,7 +157,9 @@ class _AnimatedToggleSwitchKasState extends State<AnimatedToggleSwitchKas>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              widget.isRtMode ? Icons.home_work : Icons.person,
+                              widget.isRtMode
+                                  ? (widget.iconRT ?? Icons.home_work)
+                                  : (widget.iconWarga ?? Icons.person),
                               color: Colors.white,
                               size: 20,
                             ),
@@ -161,8 +167,8 @@ class _AnimatedToggleSwitchKasState extends State<AnimatedToggleSwitchKas>
                             Flexible(
                               child: Text(
                                 widget.isRtMode
-                                    ? 'RT'
-                                    : 'Warga',
+                                    ? (widget.indicatorLabelRT ?? 'RT')
+                                    : (widget.indicatorLabelWarga ?? 'Warga'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -182,17 +188,18 @@ class _AnimatedToggleSwitchKasState extends State<AnimatedToggleSwitchKas>
                 // Label text di setiap sisi
                 Positioned.fill(
                   child: IgnorePointer(
+                    ignoring: true, // Ditambahkan properti ignoring secara eksplisit
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         Expanded(
                           child: Center(
                             child: Opacity(
-                              opacity: widget.isRtMode ? 0.5 : 1.0,
+                              opacity: widget.isRtMode ? 1.0 : 0.0,
                               child: Text(
                                 widget.labelWarga,
-                                style: TextStyle(
-                                  color: const Color(0xFF1976D2),
+                                style: const TextStyle(
+                                  color: Color(0xFF1976D2),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
                                   letterSpacing: 0.5,
@@ -206,11 +213,11 @@ class _AnimatedToggleSwitchKasState extends State<AnimatedToggleSwitchKas>
                         Expanded(
                           child: Center(
                             child: Opacity(
-                              opacity: !widget.isRtMode ? 0.5 : 1.0,
+                              opacity: !widget.isRtMode ? 1.0 : 0.0,
                               child: Text(
                                 widget.labelRT,
-                                style: TextStyle(
-                                  color: const Color(0xFF2E7D32),
+                                style: const TextStyle(
+                                  color: Color(0xFF1976D2),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
                                   letterSpacing: 0.5,

@@ -21,7 +21,7 @@ class DatabaseHelper {
     // Memicu onCreate jika file database belum terbentuk di device
     return await openDatabase(
       path, 
-      version: 3,  // ✓ UPDATED: Increment version untuk upgrade ke v3 (Master Iuran)
+      version: 4,  // ✓ UPDATED: Increment version untuk upgrade ke v4 (Master Iuran & Kas)
       onCreate: _createDB,
       onUpgrade: _upgradeDB,  // ✓ ADDED: Handle database upgrade
     );
@@ -47,6 +47,19 @@ class DatabaseHelper {
         )
       ''');
       print('✓ Tabel master iuran created successfully');
+    }
+
+    if (oldVersion < 4) {
+      // Migrasi dari v3 ke v4: Tambah kolom tipe pada tabel_master_iuran
+      print('📋 Adding column tipe to tabel_master_iuran for v4...');
+      try {
+        await db.execute("ALTER TABLE tabel_master_iuran ADD COLUMN tipe TEXT DEFAULT 'IURAN'");
+        // Update kategori default 'Kas Sosial RT' menjadi tipe 'KAS'
+        await db.update('tabel_master_iuran', {'tipe': 'KAS'}, where: 'nama_iuran = ?', whereArgs: ['Kas Sosial RT']);
+        print('✓ Column tipe added and Kas Sosial RT updated to KAS successfully');
+      } catch (e) {
+        print('❌ Error migrating to v4: $e');
+      }
     }
   }
 
@@ -99,26 +112,31 @@ class DatabaseHelper {
       CREATE TABLE tabel_master_iuran (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nama_iuran TEXT NOT NULL UNIQUE,
-        nominal_wajib TEXT NOT NULL
+        nominal_wajib TEXT NOT NULL,
+        tipe TEXT DEFAULT 'IURAN'
       )
     ''');
 
     // ✓ SEED: Default master iuran
     await db.insert('tabel_master_iuran', {
       'nama_iuran': 'Iuran Kebersihan',
-      'nominal_wajib': '50000'
+      'nominal_wajib': '50000',
+      'tipe': 'IURAN'
     });
     await db.insert('tabel_master_iuran', {
       'nama_iuran': 'Iuran Keamanan',
-      'nominal_wajib': '30000'
+      'nominal_wajib': '30000',
+      'tipe': 'IURAN'
     });
     await db.insert('tabel_master_iuran', {
       'nama_iuran': 'Kas Sosial RT',
-      'nominal_wajib': '20000'
+      'nominal_wajib': '20000',
+      'tipe': 'KAS'
     });
     await db.insert('tabel_master_iuran', {
       'nama_iuran': 'Keperluan Infrastruktur',
-      'nominal_wajib': '75000'
+      'nominal_wajib': '75000',
+      'tipe': 'IURAN'
     });
 
     // 4. Tabel Kritik & Aduan Fasum (Anggota 3)

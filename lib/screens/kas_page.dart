@@ -21,10 +21,6 @@ class _KasPageState extends State<KasPage> {
   final _formKey = GlobalKey<FormState>();
   final _nominalController = TextEditingController();
   final _keteranganController = TextEditingController();
-  
-  // === CUSTOM ANIMATED TOGGLE MODE (Asesmen 3 Feature) ===
-  bool _isRtMode = false; // false = Mode Iuran Warga, true = Mode Kas RT
-  
   String _jenisIuranSelected = 'Iuran Kebersihan';
   String _tipeTransaksi = 'MASUK'; 
   String _bulanSelected = 'Mei';
@@ -261,264 +257,216 @@ class _KasPageState extends State<KasPage> {
               'Formulir Iuran & Kas RT',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 12),
-
-            // ✓ NEW: CUSTOM ANIMATED TOGGLE SWITCH
-            AnimatedToggleSwitchKas(
-              isRtMode: _isRtMode,
-              onToggled: (isRt) {
-                setState(() {
-                  _isRtMode = isRt;
-                  _showQrisPreview = false; // Reset preview when toggling
-                });
-              },
-              labelWarga: 'Mode Iuran Warga',
-              labelRT: 'Mode Kas RT (View)',
-            ),
             const SizedBox(height: 20),
 
-            // === CONDITIONAL RENDER BERDASARKAN TOGGLE MODE ===
-            if (!_isRtMode) ...[
-              // MODE IURAN WARGA - FORM INPUT
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16), 
-                  side: const BorderSide(color: Color(0xFFE5E7EB))
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Setor Iuran Bulanan',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ✓ DYNAMIC MASTER IURAN DROPDOWN
-                        DropdownButtonFormField<String>(
-                          value: _masterIuran.isNotEmpty ? _jenisIuranSelected : null,
-                          decoration: const InputDecoration(
-                            labelText: 'Kategori Iuran',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.category, color: AppColors.secondary),
-                          ),
-                          items: _masterIuran.map((iuran) {
-                            final String nama = iuran['nama_iuran'] as String;
-                            final nominal = iuran['nominal_wajib'];
-                            return DropdownMenuItem<String>(
-                              value: nama,
-                              child: Text('$nama (Rp $nominal)'),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _jenisIuranSelected = val!;
-                              _showQrisPreview = false; // Reset when change category
-                            });
-                          },
-                          validator: (val) => val == null ? 'Pilih kategori iuran' : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        DropdownButtonFormField<String>(
-                          value: _bulanSelected,
-                          decoration: const InputDecoration(
-                            labelText: 'Periode Bulan',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.calendar_month, color: AppColors.secondary),
-                          ),
-                          items: _listBulan.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _bulanSelected = val!;
-                              _showQrisPreview = false;
-                            });
-                            _saveKasPreferences();
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _nominalController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Jumlah Nominal',
-                            border: OutlineInputBorder(),
-                            prefixText: 'Rp ',
-                            prefixIcon: Icon(Icons.attach_money, color: AppColors.secondary),
-                          ),
-                          validator: (val) => val == null || val.isEmpty ? 'Nominal tidak boleh kosong' : null,
-                          onChanged: (val) {
-                            setState(() {
-                              _showQrisPreview = false; // Reset saat nominal berubah
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _keteranganController,
-                          decoration: const InputDecoration(
-                            labelText: 'Keterangan (Opsional)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.note, color: AppColors.secondary),
-                            hintText: 'Catatan tambahan...',
-                          ),
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Media Bukti Transfer
-                        const Text(
-                          'Upload Struk Bukti Transfer',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: () => _pilihGambarBukti(ImageSource.gallery),
-                              icon: const Icon(Icons.image, color: AppColors.primary),
-                              label: const Text('Galeri'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondary.withAlpha(35),
-                                foregroundColor: AppColors.primary,
-                                elevation: 0,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton.icon(
-                              onPressed: () => _pilihGambarBukti(ImageSource.camera),
-                              icon: const Icon(Icons.camera_alt, color: AppColors.primary),
-                              label: const Text('Kamera'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondary.withAlpha(35),
-                                foregroundColor: AppColors.primary,
-                                elevation: 0,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (_imageBytes != null) ...[
-                          const SizedBox(height: 10),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.memory(_imageBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-
-                        // ✓ NEW: PREVIEW QRIS BUTTON SEBELUM SUBMIT
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: OutlinedButton.icon(
-                            onPressed: _nominalController.text.isEmpty ? null : () {
-                              setState(() {
-                                _showQrisPreview = !_showQrisPreview;
-                              });
-                            },
-                            icon: const Icon(Icons.qr_code_2),
-                            label: Text(_showQrisPreview ? 'Tutup Preview QRIS' : 'Lihat Preview QRIS'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // ✓ NEW: QRIS PREVIEW CARD
-                        if (_showQrisPreview) ...[
-                          QrisGeneratorWidget(
-                            namaWarga: widget.namaWarga,
-                            jenisIuran: _jenisIuranSelected,
-                            nominalRupiah: _nominalController.text,
-                            bulanPeriode: _bulanSelected,
-                            qrSize: 200,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: _isUploading ? null : _simpanTransaksiKas,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: _isUploading 
-                              ? const CircularProgressIndicator(color: Colors.white) 
-                              : Text(
-                                  _editingKasId != null ? 'Perbarui Transaksi' : 'Catat Transaksi Kas',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                          ),
-                        ),
-                        if (_editingKasId != null) ...[
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 42,
-                            child: OutlinedButton(
-                              onPressed: _resetForm,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.secondary,
-                                side: const BorderSide(color: AppColors.secondary),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('Batal Edit', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ]
-                      ],
-                    ),
-                  ),
-                ),
+            // MODE IURAN WARGA - FORM INPUT
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16), 
+                side: const BorderSide(color: Color(0xFFE5E7EB))
               ),
-            ] else ...[
-              // MODE KAS RT - INFO DISPLAY
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Color(0xFFE5E7EB))
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Text(
+                        'Setor Iuran Bulanan',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ✓ DYNAMIC MASTER IURAN DROPDOWN
+                      DropdownButtonFormField<String>(
+                        value: _masterIuran.isNotEmpty ? _jenisIuranSelected : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Kategori Iuran',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.category, color: AppColors.secondary),
+                        ),
+                        items: _masterIuran.map((iuran) {
+                          final String nama = iuran['nama_iuran'] as String;
+                          final nominal = iuran['nominal_wajib'];
+                          return DropdownMenuItem<String>(
+                            value: nama,
+                            child: Text('$nama (Rp $nominal)'),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _jenisIuranSelected = val!;
+                            _showQrisPreview = false; // Reset when change category
+                          });
+                        },
+                        validator: (val) => val == null ? 'Pilih kategori iuran' : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      DropdownButtonFormField<String>(
+                        value: _bulanSelected,
+                        decoration: const InputDecoration(
+                          labelText: 'Periode Bulan',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.calendar_month, color: AppColors.secondary),
+                        ),
+                        items: _listBulan.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _bulanSelected = val!;
+                            _showQrisPreview = false;
+                          });
+                          _saveKasPreferences();
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _nominalController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Jumlah Nominal',
+                          border: OutlineInputBorder(),
+                          prefixText: 'Rp ',
+                          prefixIcon: Icon(Icons.attach_money, color: AppColors.secondary),
+                        ),
+                        validator: (val) => val == null || val.isEmpty ? 'Nominal tidak boleh kosong' : null,
+                        onChanged: (val) {
+                          setState(() {
+                            _showQrisPreview = false; // Reset saat nominal berubah
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _keteranganController,
+                        decoration: const InputDecoration(
+                          labelText: 'Keterangan (Opsional)',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.note, color: AppColors.secondary),
+                          hintText: 'Catatan tambahan...',
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ✓ NEW: QRIS DROPDOWN PANEL
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                        ),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            leading: const Icon(Icons.qr_code_2, color: AppColors.primary),
+                            title: const Text(
+                              'Bayar Instan via QRIS',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                            subtitle: const Text(
+                              'Ketuk untuk scan QR Code pembayaran',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: QrisGeneratorWidget(
+                                  namaWarga: widget.namaWarga,
+                                  jenisIuran: _jenisIuranSelected,
+                                  nominalRupiah: _nominalController.text.isEmpty ? '0' : _nominalController.text,
+                                  bulanPeriode: _bulanSelected,
+                                  qrSize: 180,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Media Bukti Transfer
+                      const Text(
+                        'Upload Struk Bukti Transfer',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)
+                      ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.info, color: Colors.blue.shade700),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Mode Kas RT - View Only',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+                          ElevatedButton.icon(
+                            onPressed: () => _pilihGambarBukti(ImageSource.gallery),
+                            icon: const Icon(Icons.image, color: AppColors.primary),
+                            label: const Text('Galeri'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.secondary.withAlpha(35),
+                              foregroundColor: AppColors.primary,
+                              elevation: 0,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            onPressed: () => _pilihGambarBukti(ImageSource.camera),
+                            icon: const Icon(Icons.camera_alt, color: AppColors.primary),
+                            label: const Text('Kamera'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.secondary.withAlpha(35),
+                              foregroundColor: AppColors.primary,
+                              elevation: 0,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Di mode ini, Anda dapat melihat riwayat seluruh transaksi kas RT. Untuk menambah kategori iuran baru, silakan akses menu Pengurus RT.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.5),
+                      if (_imageBytes != null) ...[
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(_imageBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _isUploading ? null : _simpanTransaksiKas,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: _isUploading 
+                            ? const CircularProgressIndicator(color: Colors.white) 
+                            : Text(
+                                _editingKasId != null ? 'Perbarui Transaksi' : 'Catat Transaksi Kas',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                        ),
                       ),
+                      if (_editingKasId != null) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: OutlinedButton(
+                            onPressed: _resetForm,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.secondary,
+                              side: const BorderSide(color: AppColors.secondary),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('Batal Edit', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ]
                     ],
                   ),
                 ),
               ),
-            ],
+            ),
             const SizedBox(height: 28),
 
             // === RIWAYAT TRANSAKSI KAS ===

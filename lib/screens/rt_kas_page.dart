@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import '../data/database_helper.dart';
 import '../theme/app_colors.dart';
+import '../component/animated_toggle_switch.dart';
 
 class RtKasPage extends StatefulWidget {
   const RtKasPage({super.key});
@@ -12,7 +13,8 @@ class RtKasPage extends StatefulWidget {
 }
 
 class _RtKasPageState extends State<RtKasPage> {
-  int _currentTabIndex = 0;
+  bool _isIuranMode = false; // false = Kas, true = Iuran
+  int _transactionSubTab = 0; // 0 = Pending, 1 = Riwayat Lunas
   List<Map<String, dynamic>> _allKasData = [];
   List<Map<String, dynamic>> _masterIuran = []; // ✓ NEW: Master iuran list
   late SharedPreferences _prefs;
@@ -24,6 +26,23 @@ class _RtKasPageState extends State<RtKasPage> {
   // Form controllers untuk create kategori
   final _namaIuranController = TextEditingController();
   final _nominalController = TextEditingController();
+
+  // Hapus kategori iuran dari master tabel
+  Future<void> _deleteMasterIuran(int id) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await DatabaseHelper.instance.deleteMasterIuran(id);
+      _loadMasterIuran();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('🗑️ Kategori berhasil dihapus.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error deleting master iuran: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -40,7 +59,7 @@ class _RtKasPageState extends State<RtKasPage> {
 
   Future<void> _loadSavedTabIndex() async {
     setState(() {
-      _currentTabIndex = _prefs.getInt(_tabIndexKey) ?? 0;
+      _transactionSubTab = _prefs.getInt(_tabIndexKey) ?? 0;
     });
   }
 
@@ -65,49 +84,48 @@ class _RtKasPageState extends State<RtKasPage> {
     }
   }
 
-  // ✓ NEW: Create kategori iuran baru
-  Future<void> _createMasterIuran(String namaIuran, String nominalWajib) async {
+  // ✓ NEW: Create kategori baru (Kas atau Iuran)
+  Future<void> _createMasterIuran(String namaIuran, String nominalWajib, String tipe) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await DatabaseHelper.instance.insertMasterIuran({
         'nama_iuran': namaIuran,
         'nominal_wajib': nominalWajib,
+        'tipe': tipe,
       });
       
       _loadMasterIuran(); // Reload list
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                const Text('Kategori iuran berhasil ditambahkan!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text('Kategori ${tipe == 'KAS' ? 'Kas' : 'Iuran'} berhasil ditambahkan!'),
+            ],
           ),
-        );
-      }
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  // ✓ NEW: Show form dialog untuk create kategori iuran
-  void _showCreateIuranDialog() {
+  // ✓ NEW: Show form dialog untuk create kategori iuran / kas
+  void _showCreateCategoryDialog(String tipe) {
     _namaIuranController.clear();
     _nominalController.clear();
+    final isKas = tipe == 'KAS';
     
     showDialog(
       context: context,
@@ -118,13 +136,22 @@ class _RtKasPageState extends State<RtKasPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(30),
+                color: isKas ? Colors.teal.withAlpha(30) : AppColors.primary.withAlpha(30),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.add_circle, color: AppColors.primary, size: 24),
+              child: Icon(
+                isKas ? Icons.monetization_on : Icons.add_circle,
+                color: isKas ? Colors.teal : AppColors.primary,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
-            const Expanded(child: Text('Buat Kategori Iuran Baru', style: TextStyle(fontWeight: FontWeight.bold))),
+            Expanded(
+              child: Text(
+                isKas ? 'Buat Kategori Kas Baru' : 'Buat Kategori Iuran Baru',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -132,16 +159,19 @@ class _RtKasPageState extends State<RtKasPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Tambahkan kategori iuran baru ke sistem:', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(
+                isKas ? 'Tambahkan kategori kas baru ke sistem:' : 'Tambahkan kategori iuran baru ke sistem:',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
               const SizedBox(height: 16),
               
               TextField(
                 controller: _namaIuranController,
                 decoration: InputDecoration(
-                  labelText: 'Nama Kategori Iuran',
+                  labelText: isKas ? 'Nama Kategori Kas' : 'Nama Kategori Iuran',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   prefixIcon: const Icon(Icons.category, color: AppColors.secondary),
-                  hintText: 'Contoh: Iuran Listrik',
+                  hintText: isKas ? 'Contoh: Kas Sosial RT' : 'Contoh: Iuran Kebersihan',
                 ),
               ),
               const SizedBox(height: 12),
@@ -153,7 +183,7 @@ class _RtKasPageState extends State<RtKasPage> {
                   labelText: 'Nominal Wajib (Rp)',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   prefixIcon: const Icon(Icons.attach_money, color: AppColors.secondary),
-                  hintText: 'Contoh: 50000',
+                  hintText: 'Contoh: 20000',
                 ),
               ),
               const SizedBox(height: 12),
@@ -161,18 +191,18 @@ class _RtKasPageState extends State<RtKasPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(15),
+                  color: (isKas ? Colors.teal : AppColors.primary).withAlpha(15),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withAlpha(40)),
+                  border: Border.all(color: (isKas ? Colors.teal : AppColors.primary).withAlpha(40)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info, size: 16, color: AppColors.primary),
+                    Icon(Icons.info, size: 16, color: isKas ? Colors.teal : AppColors.primary),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Nominal ini akan menjadi default untuk dropdown kategori iuran di halaman warga',
-                        style: TextStyle(fontSize: 11, color: Colors.black87, height: 1.3),
+                        'Nominal ini akan menjadi default untuk dropdown di halaman warga',
+                        style: const TextStyle(fontSize: 11, color: Colors.black87, height: 1.3),
                       ),
                     ),
                   ],
@@ -198,11 +228,11 @@ class _RtKasPageState extends State<RtKasPage> {
                 return;
               }
               
-              _createMasterIuran(_namaIuranController.text, _nominalController.text);
+              _createMasterIuran(_namaIuranController.text, _nominalController.text, tipe);
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: isKas ? Colors.teal : AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -211,6 +241,215 @@ class _RtKasPageState extends State<RtKasPage> {
             label: const Text('Tambahkan'),
           )
         ],
+      ),
+    );
+  }
+
+  // ✓ NEW: Bottom Sheet Kelola Kategori (Kas & Iuran)
+  void _showManageCategoriesDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.8,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Kelola Kategori Kas & Iuran',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                
+                Expanded(
+                  child: _masterIuran.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.category_outlined, size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              const Text('Belum ada kategori terdaftar', style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          itemCount: _masterIuran.length,
+                          itemBuilder: (context, index) {
+                            final item = _masterIuran[index];
+                            final String tipe = item['tipe'] ?? 'IURAN';
+                            final isKas = tipe == 'KAS';
+                            
+                            return Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.grey.shade200),
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: isKas
+                                        ? Colors.teal.withAlpha(20)
+                                        : AppColors.primary.withAlpha(20),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    isKas ? Icons.monetization_on : Icons.receipt_long,
+                                    color: isKas ? Colors.teal : AppColors.primary,
+                                  ),
+                                ),
+                                title: Text(
+                                  item['nama_iuran'] ?? '-',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isKas
+                                              ? Colors.teal.withAlpha(30)
+                                              : AppColors.primary.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isKas ? 'KAS' : 'IURAN',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: isKas ? Colors.teal.shade800 : AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Rp ${item['nominal_wajib']}',
+                                        style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                        title: const Text('Hapus Kategori'),
+                                        content: Text(
+                                            'Hapus kategori "${item['nama_iuran']}"? Warga tidak akan bisa memilih kategori ini lagi.'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: const Text('Batal'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () async {
+                                              Navigator.pop(ctx);
+                                              await _deleteMasterIuran(item['id']);
+                                              setModalState(() {});
+                                            },
+                                            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+                
+                Container(
+                  padding: const EdgeInsets.only(left: 20, right: 20, bottom: 24, top: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _showCreateCategoryDialog('KAS');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.add_card, size: 18),
+                          label: const Text('Kategori Kas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _showCreateCategoryDialog('IURAN');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.add_box, size: 18),
+                          label: const Text('Kategori Iuran', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -296,26 +535,26 @@ Dibagikan melalui Warga Wargi App
           ),
           ElevatedButton.icon(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
               await DatabaseHelper.instance.updateKasStatus(kas['id'], 'Lunas');
-              Navigator.pop(ctx);
+              navigator.pop();
               _refreshKasList();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                        const SizedBox(width: 12),
-                        const Text('Pembayaran berhasil disetujui!'),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                    margin: const EdgeInsets.all(16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                      const SizedBox(width: 12),
+                      const Text('Pembayaran berhasil disetujui!'),
+                    ],
                   ),
-                );
-              }
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -354,39 +593,132 @@ Dibagikan melalui Warga Wargi App
 
   @override
   Widget build(BuildContext context) {
-    final isPending = _currentTabIndex == 0;
+    // 1. Dapatkan semua nama kategori dengan tipe KAS
+    final kasCategories = _masterIuran
+        .where((c) => c['tipe'] == 'KAS')
+        .map((c) => c['nama_iuran'] as String)
+        .toSet();
+
+    final isPending = _transactionSubTab == 0;
     
     List<Map<String, dynamic>> displayedKas = _allKasData.where((k) {
-      String status = k['status_verifikasi'] ?? 'Pending';
-      if (isPending) return status == 'Pending';
-      return status == 'Lunas';
+      // Filter status verifikasi (Pending vs Lunas)
+      final String status = k['status_verifikasi'] ?? 'Pending';
+      if (isPending && status != 'Pending') return false;
+      if (!isPending && status != 'Lunas') return false;
+      
+      // Filter tipe (Kas vs Iuran)
+      final String jenis = (k['jenis_iuran'] ?? '').toString();
+      final bool isKas = kasCategories.contains(jenis) || jenis.toLowerCase().contains('kas');
+      
+      if (_isIuranMode) {
+        return !isKas; // Mode Iuran: tampilkan selain Kas
+      } else {
+        return isKas;  // Mode Kas: tampilkan Kas
+      }
     }).toList();
-
+ 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
-        onRefresh: _refreshKasList,
+        onRefresh: () async {
+          await _refreshKasList();
+          await _loadMasterIuran();
+        },
         child: CustomScrollView(
           slivers: [
-            // App Bar dengan gradient
+            // App Bar
             SliverAppBar(
               elevation: 0,
               pinned: true,
               backgroundColor: AppColors.primary,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text(
-                  isPending ? 'Pending Approval' : 'Riwayat Kas',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.category_outlined, color: Colors.white),
+                  tooltip: 'Kelola Kategori',
+                  onPressed: _showManageCategoriesDialog,
                 ),
-                centerTitle: false,
-              ),
+              ],
             ),
             
-            // Content
+            // Switch Button Selector (Kas vs Iuran)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: AnimatedToggleSwitchKas(
+                  isRtMode: _isIuranMode,
+                  onToggled: (val) {
+                    setState(() {
+                      _isIuranMode = val;
+                    });
+                  },
+                  labelWarga: 'Kas Lingkungan',
+                  labelRT: 'Iuran Warga',
+                  indicatorLabelWarga: 'Kas',
+                  indicatorLabelRT: 'Iuran',
+                  iconWarga: Icons.monetization_on,
+                  iconRT: Icons.receipt_long,
+                ),
+              ),
+            ),
+
+            // Sub-navigation Tabs untuk Transaksi (Pending vs Riwayat)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Center(child: Text('Pending Approval')),
+                        selected: _transactionSubTab == 0,
+                        onSelected: (val) {
+                          if (val) {
+                            setState(() => _transactionSubTab = 0);
+                            _saveTabIndex(0);
+                          }
+                        },
+                        selectedColor: AppColors.primary.withAlpha(40),
+                        checkmarkColor: AppColors.primary,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _transactionSubTab == 0 ? AppColors.primary : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Center(child: Text('Riwayat Lunas')),
+                        selected: _transactionSubTab == 1,
+                        onSelected: (val) {
+                          if (val) {
+                            setState(() => _transactionSubTab = 1);
+                            _saveTabIndex(1);
+                          }
+                        },
+                        selectedColor: AppColors.primary.withAlpha(40),
+                        checkmarkColor: AppColors.primary,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _transactionSubTab == 1 ? AppColors.primary : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Content List Transaksi
             SliverPadding(
               padding: const EdgeInsets.all(16.0),
               sliver: displayedKas.isEmpty
                   ? SliverFillRemaining(
+                      hasScrollBody: false,
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -424,56 +756,14 @@ Dibagikan melalui Warga Wargi App
         ),
       ),
       
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTabIndex,
-        selectedItemColor: AppColors.secondary,
-        unselectedItemColor: Colors.grey.shade400,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        elevation: 8,
-        onTap: (index) async {
-          await _saveTabIndex(index);
-          setState(() => _currentTabIndex = index);
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: _currentTabIndex == 0
-                  ? BoxDecoration(
-                      color: AppColors.secondary.withAlpha(30),
-                      borderRadius: BorderRadius.circular(8),
-                    )
-                  : null,
-              child: const Icon(Icons.pending_actions),
-            ),
-            label: 'Pending',
-          ),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: _currentTabIndex == 1
-                  ? BoxDecoration(
-                      color: AppColors.secondary.withAlpha(30),
-                      borderRadius: BorderRadius.circular(8),
-                    )
-                  : null,
-              child: const Icon(Icons.history),
-            ),
-            label: 'Riwayat',
-          ),
-        ],
-      ),
-      
-      // ✓ NEW: FAB untuk create kategori iuran
+      // ✓ FAB untuk Kelola Kategori
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showCreateIuranDialog,
+        onPressed: _showManageCategoriesDialog,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Kategori Iuran'),
-        tooltip: 'Tambah Kategori Iuran Baru',
+        icon: const Icon(Icons.category),
+        label: const Text('Kelola Kategori'),
+        tooltip: 'Kelola Kategori Kas & Iuran',
       ),
     );
   }
