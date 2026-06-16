@@ -21,7 +21,7 @@ class DatabaseHelper {
     // Memicu onCreate jika file database belum terbentuk di device
     return await openDatabase(
       path, 
-      version: 2,  // ✓ UPDATED: Increment version untuk upgrade
+      version: 3,  // ✓ UPDATED: Increment version untuk Asesmen 3 (GPS)
       onCreate: _createDB,
       onUpgrade: _upgradeDB,  // ✓ ADDED: Handle database upgrade
     );
@@ -33,7 +33,16 @@ class DatabaseHelper {
     
     if (oldVersion < 2) {
       // Tidak ada action khusus, table sudah ada
-      print('✓ Database upgrade completed');
+      print('✓ Database upgrade v2 completed');
+    }
+    if (oldVersion < 3) {
+      // Tambah kolom GPS koordinat untuk Asesmen 3
+      try {
+        await db.execute('ALTER TABLE kritik ADD COLUMN lokasi_koordinat TEXT');
+        print('✓ Kolom lokasi_koordinat berhasil ditambahkan');
+      } catch (e) {
+        print('⚠️ Kolom lokasi_koordinat mungkin sudah ada: $e');
+      }
     }
   }
 
@@ -90,7 +99,8 @@ class DatabaseHelper {
         isi_critic TEXT NOT NULL,
         bukti_keluhan TEXT,                -- Teks Base64 Foto Lapangan
         tanggal_lapor TEXT NOT NULL,
-        status_laporan TEXT DEFAULT 'Belum ditangani'  -- ✓ ADDED: Status laporan
+        status_laporan TEXT DEFAULT 'Belum ditangani',
+        lokasi_koordinat TEXT              -- GPS lat,lng dari geolocator
       )
     ''');
   }
