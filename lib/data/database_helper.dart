@@ -46,14 +46,18 @@ class DatabaseHelper {
     if (oldVersion < 3) {
       // Migrasi dari v2 ke v3: Tambah tabel master iuran
       print('📋 Creating tabel_master_iuran for v3...');
-      await db.execute('''
-        CREATE TABLE tabel_master_iuran (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nama_iuran TEXT NOT NULL UNIQUE,
-          nominal_wajib TEXT NOT NULL
-        )
-      ''');
-      print('✓ Tabel master iuran created successfully');
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS tabel_master_iuran (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nama_iuran TEXT NOT NULL UNIQUE,
+            nominal_wajib TEXT NOT NULL
+          )
+        ''');
+        print('✓ Tabel master iuran created successfully');
+      } catch (e) {
+        print('⚠️ Tabel master iuran mungkin sudah ada atau gagal dibuat: $e');
+      }
 
       // Tambah kolom GPS koordinat untuk Asesmen 3
       try {
@@ -82,85 +86,145 @@ class DatabaseHelper {
       print('📋 Migrating database schema from v4 to v5 for relational integrity...');
       try {
         // 1. Rename tabel-tabel lama
-        await db.execute('ALTER TABLE tabel_kas RENAME TO old_tabel_kas');
-        await db.execute('ALTER TABLE surat RENAME TO old_surat');
-        await db.execute('ALTER TABLE kritik RENAME TO old_kritik');
+        try {
+          await db.execute('ALTER TABLE tabel_kas RENAME TO old_tabel_kas');
+          print('✓ Renamed tabel_kas to old_tabel_kas');
+        } catch (e) {
+          print('⚠️ Could not rename tabel_kas: $e');
+        }
+        try {
+          await db.execute('ALTER TABLE surat RENAME TO old_surat');
+          print('✓ Renamed surat to old_surat');
+        } catch (e) {
+          print('⚠️ Could not rename surat: $e');
+        }
+        try {
+          await db.execute('ALTER TABLE kritik RENAME TO old_kritik');
+          print('✓ Renamed kritik to old_kritik');
+        } catch (e) {
+          print('⚠️ Could not rename kritik: $e');
+        }
         
         // 2. Buat tabel-tabel baru dengan relational structure dan constraints
-        await db.execute('''
-          CREATE TABLE tabel_kas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            warga_nik TEXT NOT NULL,
-            jenis_iuran TEXT NOT NULL,
-            tipe_transaksi TEXT NOT NULL,
-            bulan_periode TEXT NOT NULL,
-            jumlah_nominal TEXT NOT NULL,
-            keterangan TEXT,
-            bukti_bayar TEXT,
-            status_verifikasi TEXT NOT NULL,
-            tanggal_setor TEXT NOT NULL,
-            FOREIGN KEY (warga_nik) REFERENCES users(nik) ON UPDATE CASCADE ON DELETE CASCADE,
-            FOREIGN KEY (jenis_iuran) REFERENCES tabel_master_iuran(nama_iuran) ON UPDATE CASCADE ON DELETE RESTRICT
-          )
-        ''');
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS tabel_kas (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              warga_nik TEXT NOT NULL,
+              jenis_iuran TEXT NOT NULL,
+              tipe_transaksi TEXT NOT NULL,
+              bulan_periode TEXT NOT NULL,
+              jumlah_nominal TEXT NOT NULL,
+              keterangan TEXT,
+              bukti_bayar TEXT,
+              status_verifikasi TEXT NOT NULL,
+              tanggal_setor TEXT NOT NULL,
+              FOREIGN KEY (warga_nik) REFERENCES users(nik) ON UPDATE CASCADE ON DELETE CASCADE,
+              FOREIGN KEY (jenis_iuran) REFERENCES tabel_master_iuran(nama_iuran) ON UPDATE CASCADE ON DELETE RESTRICT
+            )
+          ''');
+          print('✓ Created new tabel_kas');
+        } catch (e) {
+          print('⚠️ Could not create tabel_kas: $e');
+        }
         
-        await db.execute('''
-          CREATE TABLE surat (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pemohon_nik TEXT NOT NULL,
-            jenis_surat TEXT NOT NULL,
-            perihal TEXT NOT NULL,
-            tanggal_aju TEXT NOT NULL,
-            status_surat TEXT DEFAULT 'Pending',
-            file_pdf TEXT,
-            FOREIGN KEY (pemohon_nik) REFERENCES users(nik) ON UPDATE CASCADE ON DELETE CASCADE
-          )
-        ''');
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS surat (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              pemohon_nik TEXT NOT NULL,
+              jenis_surat TEXT NOT NULL,
+              perihal TEXT NOT NULL,
+              tanggal_aju TEXT NOT NULL,
+              status_surat TEXT DEFAULT 'Pending',
+              file_pdf TEXT,
+              FOREIGN KEY (pemohon_nik) REFERENCES users(nik) ON UPDATE CASCADE ON DELETE CASCADE
+            )
+          ''');
+          print('✓ Created new surat table');
+        } catch (e) {
+          print('⚠️ Could not create surat table: $e');
+        }
         
-        await db.execute('''
-          CREATE TABLE kritik (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pelapor_nik TEXT NOT NULL,
-            judul_keluhan TEXT NOT NULL,
-            isi_critic TEXT NOT NULL,
-            bukti_keluhan TEXT,
-            tanggal_lapor TEXT NOT NULL,
-            status_laporan TEXT DEFAULT 'Belum ditangani',
-            lokasi_koordinat TEXT,
-            FOREIGN KEY (pelapor_nik) REFERENCES users(nik) ON UPDATE CASCADE ON DELETE CASCADE
-          )
-        ''');
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS kritik (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              pelapor_nik TEXT NOT NULL,
+              judul_keluhan TEXT NOT NULL,
+              isi_critic TEXT NOT NULL,
+              bukti_keluhan TEXT,
+              tanggal_lapor TEXT NOT NULL,
+              status_laporan TEXT DEFAULT 'Belum ditangani',
+              lokasi_koordinat TEXT,
+              FOREIGN KEY (pelapor_nik) REFERENCES users(nik) ON UPDATE CASCADE ON DELETE CASCADE
+            )
+          ''');
+          print('✓ Created new kritik table');
+        } catch (e) {
+          print('⚠️ Could not create kritik table: $e');
+        }
         
         // 3. Pindahkan data dari tabel lama ke baru dengan lookup nik berdasarkan nama warga
         // Ambil default fallback nik dari tabel users jika relasi nama tidak ketemu
         final List<Map<String, dynamic>> defaultUser = await db.query('users', limit: 1);
         final String fallbackNik = defaultUser.isNotEmpty ? (defaultUser.first['nik'] ?? '1234567890123456') : '1234567890123456';
         
-        await db.execute('''
-          INSERT INTO tabel_kas (id, warga_nik, jenis_iuran, tipe_transaksi, bulan_periode, jumlah_nominal, keterangan, bukti_bayar, status_verifikasi, tanggal_setor)
-          SELECT k.id, COALESCE(u.nik, '$fallbackNik'), k.jenis_iuran, k.tipe_transaksi, k.bulan_periode, k.jumlah_nominal, k.keterangan, k.bukti_bayar, k.status_verifikasi, k.tanggal_setor
-          FROM old_tabel_kas k
-          LEFT JOIN users u ON k.nama_warga = u.nama
-        ''');
+        try {
+          await db.execute('''
+            INSERT INTO tabel_kas (id, warga_nik, jenis_iuran, tipe_transaksi, bulan_periode, jumlah_nominal, keterangan, bukti_bayar, status_verifikasi, tanggal_setor)
+            SELECT k.id, COALESCE(u.nik, '$fallbackNik'), k.jenis_iuran, k.tipe_transaksi, k.bulan_periode, k.jumlah_nominal, k.keterangan, k.bukti_bayar, k.status_verifikasi, k.tanggal_setor
+            FROM old_tabel_kas k
+            LEFT JOIN users u ON k.nama_warga = u.nama
+          ''');
+          print('✓ Migrated data from old_tabel_kas to tabel_kas');
+        } catch (e) {
+          print('⚠️ Could not migrate data from old_tabel_kas: $e');
+        }
         
-        await db.execute('''
-          INSERT INTO surat (id, pemohon_nik, jenis_surat, perihal, tanggal_aju, status_surat, file_pdf)
-          SELECT s.id, COALESCE(u.nik, '$fallbackNik'), s.jenis_surat, s.perihal, s.tanggal_aju, s.status_surat, s.file_pdf
-          FROM old_surat s
-          LEFT JOIN users u ON s.nama_pemohon = u.nama
-        ''');
+        try {
+          await db.execute('''
+            INSERT INTO surat (id, pemohon_nik, jenis_surat, perihal, tanggal_aju, status_surat, file_pdf)
+            SELECT s.id, COALESCE(u.nik, '$fallbackNik'), s.jenis_surat, s.perihal, s.tanggal_aju, s.status_surat, s.file_pdf
+            FROM old_surat s
+            LEFT JOIN users u ON s.nama_pemohon = u.nama
+          ''');
+          print('✓ Migrated data from old_surat to surat');
+        } catch (e) {
+          print('⚠️ Could not migrate data from old_surat: $e');
+        }
         
-        await db.execute('''
-          INSERT INTO kritik (id, pelapor_nik, judul_keluhan, isi_critic, bukti_keluhan, tanggal_lapor, status_laporan, lokasi_koordinat)
-          SELECT c.id, COALESCE(u.nik, '$fallbackNik'), c.judul_keluhan, c.isi_critic, c.bukti_keluhan, c.tanggal_lapor, c.status_laporan, c.lokasi_koordinat
-          FROM old_kritik c
-          LEFT JOIN users u ON c.nama_pelapor = u.nama
-        ''');
+        try {
+          await db.execute('''
+            INSERT INTO kritik (id, pelapor_nik, judul_keluhan, isi_critic, bukti_keluhan, tanggal_lapor, status_laporan, lokasi_koordinat)
+            SELECT c.id, COALESCE(u.nik, '$fallbackNik'), c.judul_keluhan, c.isi_critic, c.bukti_keluhan, c.tanggal_lapor, c.status_laporan, c.lokasi_koordinat
+            FROM old_kritik c
+            LEFT JOIN users u ON c.nama_pelapor = u.nama
+          ''');
+          print('✓ Migrated data from old_kritik to kritik');
+        } catch (e) {
+          print('⚠️ Could not migrate data from old_kritik: $e');
+        }
         
         // 4. Hapus tabel lama
-        await db.execute('DROP TABLE old_tabel_kas');
-        await db.execute('DROP TABLE old_surat');
-        await db.execute('DROP TABLE old_kritik');
+        try {
+          await db.execute('DROP TABLE old_tabel_kas');
+          print('✓ Dropped old_tabel_kas');
+        } catch (e) {
+          print('⚠️ Could not drop old_tabel_kas: $e');
+        }
+        try {
+          await db.execute('DROP TABLE old_surat');
+          print('✓ Dropped old_surat');
+        } catch (e) {
+          print('⚠️ Could not drop old_surat: $e');
+        }
+        try {
+          await db.execute('DROP TABLE old_kritik');
+          print('✓ Dropped old_kritik');
+        } catch (e) {
+          print('⚠️ Could not drop old_kritik: $e');
+        }
         
         print('✓ Database upgrade v4→v5 completed successfully');
       } catch (e) {

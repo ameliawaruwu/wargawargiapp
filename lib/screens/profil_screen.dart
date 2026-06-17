@@ -74,15 +74,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
       _currentPassword = user['password'] ?? '';
       _phoneCtrl.text = user['warga_phone'] ?? '';
       _alamatCtrl.text = user['warga_alamat'] ?? '';
-      
-<<<<<<< HEAD
-      // TARIK DATA NO HP DAN ALAMAT DARI DATABASE KE CONTROLLER
-      _phoneCtrl.text = user['warga_phone'] ?? '';
-      _alamatCtrl.text = user['warga_alamat'] ?? '';
-      
-      _fotoProfilBase64 = storedPhoto;
-=======
->>>>>>> 473903b86224efca4f8243e756b40516a3c8a1cb
       _fotoProfilBytes = storedPhoto != null ? base64Decode(storedPhoto) : null;
       _isLoading = false;
     });

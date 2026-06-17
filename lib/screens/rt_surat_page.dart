@@ -1,5 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
 import '../data/database_helper.dart';
+import '../data/notification_helper.dart';
 import '../theme/app_colors.dart';
 
 class RtSuratPage extends StatefulWidget {
@@ -81,6 +87,152 @@ class _RtSuratPageState extends State<RtSuratPage> {
   Future<void> _refreshSuratList() async {
     final data = await DatabaseHelper.instance.getSurat();
     setState(() => _allSuratData = data);
+  }
+
+  Future<void> _cetakPdfSurat(Map<String, dynamic> data) async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(32),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text("KORPS WARGA KABUPATEN BANDUNG", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.Text("RUKUN TETANGGA 10 / RUKUN WARGA 04", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                      pw.Text("Kecamatan Bojongsoang, Kabupaten Bandung, Jawa Barat", style: const pw.TextStyle(fontSize: 10)),
+                      pw.SizedBox(height: 4),
+                      pw.Container(height: 2, color: PdfColors.black),
+                      pw.SizedBox(height: 24),
+                    ]
+                  )
+                ),
+                pw.Center(
+                  child: pw.Text("SURAT KETERANGAN PENGANTAR", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline)),
+                ),
+                pw.Center(
+                  child: pw.Text("Nomor: Ref/026/SRT/${data['id']}", style: const pw.TextStyle(fontSize: 11)),
+                ),
+                pw.SizedBox(height: 32),
+                pw.Text("Yang bertanda tangan di bawah ini Ketua Rukun Tetangga 10 RW 04 Kabupaten Bandung, menerangkan bahwa:"),
+                pw.SizedBox(height: 16),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(left: 24),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(children: [pw.SizedBox(width: 120, child: pw.Text("Nama Pemohon")), pw.Text(": ${data['nama_pemohon']}")]),
+                      pw.SizedBox(height: 8),
+                      pw.Row(children: [pw.SizedBox(width: 120, child: pw.Text("Jenis Layanan")), pw.Text(": ${data['jenis_surat']}")]),
+                      pw.SizedBox(height: 8),
+                      pw.Row(children: [pw.SizedBox(width: 120, child: pw.Text("Tanggal Ajuan")), pw.Text(": ${data['tanggal_aju']}")]),
+                    ]
+                  )
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text("Orang tersebut adalah warga kami berdomisili di lingkungan RT 10 / RW 04. Surat pengantar ini dibuat berdasarkan keperluan:"),
+                pw.SizedBox(height: 12),
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
+                  child: pw.Text(data['perihal'] ?? '-', style: pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Text("Demikian surat pengantar keterangan digital ini dibuat agar dapat dipergunakan sebagaimana mestinya."),
+                pw.SizedBox(height: 50),
+                pw.Align(
+                  alignment: pw.Alignment.topRight,
+                  child: pw.Column(
+                    children: [
+                      pw.Text("Bandung, ${data['tanggal_aju']}"),
+                      pw.Text("Ketua RT 10 / RW 04"),
+                      pw.SizedBox(height: 10),
+                      pw.BarcodeWidget(
+                        barcode: pw.Barcode.qrCode(),
+                        data: "Verifikasi Surat Digital RT10/RW04\nID: WG-${data['id']}\nPemohon: ${data['nama_pemohon']}\nNIK: ${data['pemohon_nik'] ?? '-'}\nJenis: ${data['jenis_surat']}\nTanggal: ${data['tanggal_aju']}\nStatus: DISETUJUI",
+                        width: 65,
+                        height: 65,
+                      ),
+                      pw.SizedBox(height: 10),
+                      pw.Text("PENGURUS RT", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text("[ TTD Digital Sistem ]", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+                    ]
+                  )
+                )
+              ]
+            )
+          );
+        },
+      ),
+    );
+
+    final pdfBytes = await pdf.save();
+
+    String fileName = (data['file_pdf'] ?? '').toString().trim();
+    if (fileName.isEmpty) {
+      fileName = "surat_pengantar_${data['id']}.pdf";
+    } else {
+      if (!fileName.toLowerCase().endsWith('.pdf')) {
+        fileName = "$fileName.pdf";
+      }
+    }
+
+    try {
+      Directory? downloadDir;
+      if (Platform.isAndroid) {
+        downloadDir = Directory('/storage/emulated/0/Download');
+        if (!await downloadDir.exists()) {
+          try {
+            await downloadDir.create(recursive: true);
+          } catch (_) {
+            downloadDir = await getExternalStorageDirectory();
+          }
+        }
+      } else {
+        downloadDir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+      }
+
+      if (downloadDir == null) {
+        throw Exception("Gagal mendapatkan direktori download");
+      }
+
+      final file = File('${downloadDir.path}/$fileName');
+      await file.writeAsBytes(pdfBytes);
+
+      // Trigger status bar notification
+      await NotificationHelper.instance.showDownloadNotification(
+        "Unduhan Selesai",
+        "Ketuk untuk membuka $fileName",
+        file.path,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ PDF berhasil diunduh ke: ${file.path}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error saving PDF: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Download langsung gagal, membuka menu cetak/simpan manual...'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdfBytes);
+    }
   }
 
   void _onTabChanged(int index) => setState(() {
@@ -768,17 +920,36 @@ class _RtSuratPageState extends State<RtSuratPage> {
             if (st == 'disetujui' &&
                 (srt['file_pdf'] ?? '').toString().isNotEmpty) ...[
               const SizedBox(height: 10),
-              Row(children: [
-                const Icon(Icons.picture_as_pdf,
-                    size: 16, color: Colors.redAccent),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: Text(srt['file_pdf'],
-                        style: const TextStyle(
+              InkWell(
+                onTap: () => _cetakPdfSurat(srt),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFECDD3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.picture_as_pdf, size: 18, color: Colors.redAccent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          srt['file_pdf'],
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.redAccent,
-                            fontWeight: FontWeight.w600))),
-              ]),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.print_rounded, size: 16, color: Colors.redAccent),
+                    ],
+                  ),
+                ),
+              ),
             ],
             // Tombol aksi — hanya di Surat Masuk
             if (!isArchived) ...[

@@ -18,20 +18,18 @@ dependencies:
   uuid: ^4.3.3                  # Generator ID unik otomatis untuk arsip surat
   google_fonts: ^6.1.0  
   image_picker: ^1.0.7
+  path_provider: ^2.1.2
+  flutter_local_notifications: ^17.1.2
+  open_file: ^4.0.0
   geolocator: ^13.0.2
   cached_network_image: ^3.3.1
 
   cupertino_icons: ^1.0.8
-<<<<<<< HEAD
-  sqlite_viewer: ^1.0.5
   pdf: ^3.11.2
   printing: ^5.14.2
-=======
-  pdf: ^3.12.0
-  printing: ^5.14.3
   url_launcher: ^6.3.2
   qr_flutter: ^4.1.0
->>>>>>> 473903b86224efca4f8243e756b40516a3c8a1cb
+  flutter_animate: ^4.5.0
 
 dev_dependencies:
   flutter_test:

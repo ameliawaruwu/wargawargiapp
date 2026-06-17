@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'screens/landing_page.dart';
 import 'data/database_helper.dart';
+import 'data/notification_helper.dart';
 import 'theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   print('🚀 APP: Starting application...');
   
+  await NotificationHelper.instance.initialize();
   await DatabaseHelper.instance.seedDefaultUser();
   
   print('✅ APP: Ready to run');
