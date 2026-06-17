@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../data/database_helper.dart';
 import '../theme/app_colors.dart';
 import '../component/animated_toggle_switch.dart';
@@ -677,7 +678,7 @@ Dibagikan melalui Warga Wargi App
                   iconWarga: Icons.monetization_on,
                   iconRT: Icons.receipt_long,
                 ),
-              ),
+              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
             ),
 
             // Sub-navigation Tabs untuk Transaksi (Pending vs Riwayat)
@@ -727,7 +728,7 @@ Dibagikan melalui Warga Wargi App
                     ),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(delay: 100.ms, duration: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
             ),
 
             // Content List Transaksi
@@ -763,7 +764,10 @@ Dibagikan melalui Warga Wargi App
                       delegate: SliverChildBuilderDelegate(
                         (context, idx) {
                           final kas = displayedKas[idx];
-                          return _buildKasCard(kas, isPending);
+                          return _buildKasCard(kas, isPending)
+                              .animate()
+                              .fadeIn(delay: (idx * 50).ms, duration: 400.ms)
+                              .slideX(begin: 0.05, end: 0, curve: Curves.easeOutQuad);
                         },
                         childCount: displayedKas.length,
                       ),

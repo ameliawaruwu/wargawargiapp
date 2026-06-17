@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../data/database_helper.dart';
 import '../component/custom_bottom_nav.dart';
 import '../component/animated_toggle_switch.dart';
@@ -478,7 +479,7 @@ class _KasPageState extends State<KasPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
             const SizedBox(height: 28),
 
             // === RIWAYAT TRANSAKSI KAS ===
@@ -611,7 +612,7 @@ class _KasPageState extends State<KasPage> {
                           ),
                         ],
                       ),
-                    );
+                    ).animate().fadeIn(delay: (idx * 50).ms, duration: 400.ms).slideX(begin: 0.05, end: 0, curve: Curves.easeOutQuad);
                   },
                 )
           ],
