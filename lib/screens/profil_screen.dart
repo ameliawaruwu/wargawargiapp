@@ -29,9 +29,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
   String _role = 'Warga Mandiri';
   String _currentPassword = '';
   String _statusMessage = '';
-  String? _fotoProfilBase64;
   Uint8List? _fotoProfilBytes;
-  bool _isPengurusRT = false;
 
   @override
   void initState() {
@@ -72,15 +70,19 @@ class _ProfilScreenState extends State<ProfilScreen> {
     setState(() {
       _nik = user['nik'] ?? '';
       _role = user['role'] ?? 'Warga Mandiri';
-      _isPengurusRT = _role == 'Pengurus RT';
       _namaCtrl.text = user['nama'] ?? '';
       _currentPassword = user['password'] ?? '';
+      _phoneCtrl.text = user['warga_phone'] ?? '';
+      _alamatCtrl.text = user['warga_alamat'] ?? '';
       
+<<<<<<< HEAD
       // TARIK DATA NO HP DAN ALAMAT DARI DATABASE KE CONTROLLER
       _phoneCtrl.text = user['warga_phone'] ?? '';
       _alamatCtrl.text = user['warga_alamat'] ?? '';
       
       _fotoProfilBase64 = storedPhoto;
+=======
+>>>>>>> 473903b86224efca4f8243e756b40516a3c8a1cb
       _fotoProfilBytes = storedPhoto != null ? base64Decode(storedPhoto) : null;
       _isLoading = false;
     });
@@ -93,6 +95,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
       _isSaving = true;
     });
 
+    final messenger = ScaffoldMessenger.of(context);
     final updatedPassword = _passCtrl.text.isEmpty ? _currentPassword : _passCtrl.text;
     final updateRow = {
       'nama': _namaCtrl.text.trim(),
@@ -106,17 +109,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
       final sp = await SharedPreferences.getInstance();
       await sp.setString('nama_warga', _namaCtrl.text.trim());
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil berhasil diperbarui.'), backgroundColor: Colors.green),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Profil berhasil diperbarui.'), backgroundColor: Colors.green),
+      );
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menyimpan profil. Coba lagi.'), backgroundColor: Colors.redAccent),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan profil. Coba lagi.'), backgroundColor: Colors.redAccent),
+      );
     }
 
     setState(() {
@@ -136,7 +135,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
     await prefs.setString('foto_profil_$_nik', encoded);
 
     setState(() {
-      _fotoProfilBase64 = encoded;
       _fotoProfilBytes = bytes;
     });
 

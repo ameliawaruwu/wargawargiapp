@@ -94,7 +94,7 @@ class _SuratPageState extends State<SuratPage> {
 
   Future<void> _refreshSuratList() async {
     final data = await DatabaseHelper.instance.getSurat(
-      namaPemohon: _roleUser == 'Pengurus RT' ? null : _namaWarga,
+      pemohonNik: _roleUser == 'Pengurus RT' ? null : _nik,
     );
     setState(() {
       _allSuratData = data;
@@ -127,7 +127,7 @@ class _SuratPageState extends State<SuratPage> {
     }
 
     await DatabaseHelper.instance.insertSurat({
-      'nama_pemohon': _namaWarga,
+      'pemohon_nik': _nik,
       'jenis_surat': _selectedJenisSurat!,
       'perihal': "${_perihalCtrl.text}$detailTambahan",
       'tanggal_aju': DateTime.now().toString().substring(0, 10),

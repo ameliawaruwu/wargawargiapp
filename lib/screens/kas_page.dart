@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/database_helper.dart';
 import '../component/custom_bottom_nav.dart';
+import '../component/animated_toggle_switch.dart';
+import '../component/qris_generator.dart';
 import '../theme/app_colors.dart';
 
 class KasPage extends StatefulWidget {
@@ -19,20 +21,21 @@ class _KasPageState extends State<KasPage> {
   final _formKey = GlobalKey<FormState>();
   final _nominalController = TextEditingController();
   final _keteranganController = TextEditingController();
-  
   String _jenisIuranSelected = 'Iuran Kebersihan';
   String _tipeTransaksi = 'MASUK'; 
   String _bulanSelected = 'Mei';
   String _filterStatusSelected = 'SEMUA'; 
   String _roleUser = 'Warga Mandiri';
+  String _nik = '-';
   
   Uint8List? _imageBytes;
   String? _base64Image;
   bool _isUploading = false;
   List<Map<String, dynamic>> _riwayatKas = [];
+  List<Map<String, dynamic>> _masterIuran = []; // ✓ Dynamic master iuran
   int? _editingKasId;
-
-  final List<String> _listJenisIuran = ['Iuran Kebersihan', 'Iuran Keamanan', 'Kas Sosial RT', 'Keperluan Infrastruktur'];
+  bool _showQrisPreview = false; // Toggle preview QRIS
+  
   final List<String> _listBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
   @override
@@ -40,7 +43,7 @@ class _KasPageState extends State<KasPage> {
     super.initState();
     _loadKasSession();
     _loadKasPreferences();
-    _ambilRiwayatKas();
+    _loadMasterIuran(); // ✓ Load dynamic master iuran
   }
 
   Future<void> _loadKasSession() async {
@@ -48,7 +51,9 @@ class _KasPageState extends State<KasPage> {
     if (mounted) {
       setState(() {
         _roleUser = sp.getString('role_user') ?? 'Warga Mandiri';
+        _nik = sp.getString('nik') ?? '-';
       });
+      _ambilRiwayatKas();
     }
   }
 
@@ -68,9 +73,30 @@ class _KasPageState extends State<KasPage> {
     await sp.setString('kas_selected_month', _bulanSelected);
   }
 
+  // ✓ NEW: Load master iuran dinamis dari database
+  Future<void> _loadMasterIuran() async {
+    try {
+      final data = await DatabaseHelper.instance.getMasterIuran();
+      if (mounted) {
+        setState(() {
+          _masterIuran = data;
+          // Cek apakah kategori yang dipilih saat ini ada dalam daftar master
+          final exists = _masterIuran.any((item) => item['nama_iuran'] == _jenisIuranSelected);
+          if (!exists && _masterIuran.isNotEmpty) {
+            _jenisIuranSelected = _masterIuran.first['nama_iuran'];
+          } else if (_masterIuran.isNotEmpty && _jenisIuranSelected == 'Iuran Kebersihan') {
+            _jenisIuranSelected = _masterIuran.first['nama_iuran'];
+          }
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading master iuran: $e');
+    }
+  }
+
   // === READ DATA DARI SQLITE ===
   Future<void> _ambilRiwayatKas() async {
-    final data = await DatabaseHelper.instance.getKas(namaWarga: widget.namaWarga);
+    final data = await DatabaseHelper.instance.getKas(wargaNik: _nik);
     setState(() {
       _riwayatKas = data;
     });
@@ -136,7 +162,7 @@ class _KasPageState extends State<KasPage> {
     }
 
     final kasRow = {
-      'nama_warga': widget.namaWarga,
+      'warga_nik': _nik,
       'jenis_iuran': _jenisIuranSelected,
       'tipe_transaksi': _tipeTransaksi,
       'bulan_periode': _bulanSelected,
@@ -159,14 +185,20 @@ class _KasPageState extends State<KasPage> {
     setState(() {
       _imageBytes = null;
       _base64Image = null;
+      _showQrisPreview = false;
       _isUploading = false;
     });
 
-    _ambilRiwayatKas(); // Refresh list data
+    _ambilRiwayatKas();
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_editingKasId != null ? '✅ Transaksi Kas berhasil diperbarui!' : '✅ Transaksi Kas berhasil dicatat ke sistem!'), backgroundColor: Colors.green),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_editingKasId != null ? '✅ Transaksi Kas berhasil diperbarui!' : '✅ Transaksi Kas berhasil dicatat ke sistem!'), 
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
 
     if (_editingKasId != null) {
       setState(() {
@@ -216,6 +248,9 @@ class _KasPageState extends State<KasPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter data berdasarkan mode (untuk demo, filter by nama_warga)
+    final displayRiwayat = _riwayatKas;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -223,16 +258,20 @@ class _KasPageState extends State<KasPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // === HEADER DENGAN TITLE ===
             const Text(
               'Formulir Iuran & Kas RT',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 12),
-            
-            // AREA KARTU INPUT FORM
+            const SizedBox(height: 20),
+
+            // MODE IURAN WARGA - FORM INPUT
             Card(
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE5E7EB))),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16), 
+                side: const BorderSide(color: Color(0xFFE5E7EB))
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Form(
@@ -240,25 +279,56 @@ class _KasPageState extends State<KasPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Setor Kas (Masuk)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                      const SizedBox(height: 16),
+                      const Text(
+                        'Setor Iuran Bulanan',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)
+                      ),
                       const SizedBox(height: 16),
 
+                      // ✓ DYNAMIC MASTER IURAN DROPDOWN
                       DropdownButtonFormField<String>(
-                        value: _jenisIuranSelected,
-                        decoration: const InputDecoration(labelText: 'Kategori Kas', border: OutlineInputBorder()),
-                        items: _listJenisIuran.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                        onChanged: (val) { setState(() { _jenisIuranSelected = val!; }); },
+                        isExpanded: true,
+                        value: _masterIuran.isNotEmpty ? _jenisIuranSelected : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Kategori Iuran',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.category, color: AppColors.secondary),
+                        ),
+                        items: _masterIuran.map((iuran) {
+                          final String nama = iuran['nama_iuran'] as String;
+                          final nominal = iuran['nominal_wajib'];
+                          return DropdownMenuItem<String>(
+                            value: nama,
+                            child: Text(
+                              '$nama (Rp $nominal)',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _jenisIuranSelected = val!;
+                            _showQrisPreview = false; // Reset when change category
+                          });
+                        },
+                        validator: (val) => val == null ? 'Pilih kategori iuran' : null,
                       ),
                       const SizedBox(height: 12),
 
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _bulanSelected,
-                        decoration: const InputDecoration(labelText: 'Periode Bulan', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Periode Bulan',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.calendar_month, color: AppColors.secondary),
+                        ),
                         items: _listBulan.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                         onChanged: (val) {
                           setState(() {
                             _bulanSelected = val!;
+                            _showQrisPreview = false;
                           });
                           _saveKasPreferences();
                         },
@@ -268,48 +338,118 @@ class _KasPageState extends State<KasPage> {
                       TextFormField(
                         controller: _nominalController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Jumlah Nominal (Rp)', border: OutlineInputBorder(), prefixText: 'Rp '),
+                        decoration: const InputDecoration(
+                          labelText: 'Jumlah Nominal',
+                          border: OutlineInputBorder(),
+                          prefixText: 'Rp ',
+                          prefixIcon: Icon(Icons.attach_money, color: AppColors.secondary),
+                        ),
                         validator: (val) => val == null || val.isEmpty ? 'Nominal tidak boleh kosong' : null,
+                        onChanged: (val) {
+                          setState(() {
+                            _showQrisPreview = false; // Reset saat nominal berubah
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _keteranganController,
+                        decoration: const InputDecoration(
+                          labelText: 'Keterangan (Opsional)',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.note, color: AppColors.secondary),
+                          hintText: 'Catatan tambahan...',
+                        ),
+                        maxLines: 2,
                       ),
                       const SizedBox(height: 16),
 
-                      // Input Media Bukti Transfer
-                      if (_tipeTransaksi == 'MASUK') ...[
-                        const Text('Upload Struk Bukti Transfer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: () => _pilihGambarBukti(ImageSource.gallery),
-                              icon: const Icon(Icons.image, color: AppColors.primary),
-                              label: const Text('Galeri', style: TextStyle(color: AppColors.primary)),
-                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary.withOpacity(0.14), foregroundColor: AppColors.primary, elevation: 0),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton.icon(
-                              onPressed: () => _pilihGambarBukti(ImageSource.camera),
-                              icon: const Icon(Icons.camera_alt, color: AppColors.primary),
-                              label: const Text('Kamera', style: TextStyle(color: AppColors.primary)),
-                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary.withOpacity(0.14), foregroundColor: AppColors.primary, elevation: 0),
-                            ),
-                          ],
+                      // ✓ NEW: QRIS DROPDOWN PANEL
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
                         ),
-                        if (_imageBytes != null) ...[
-                          const SizedBox(height: 10),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.memory(_imageBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            leading: const Icon(Icons.qr_code_2, color: AppColors.primary),
+                            title: const Text(
+                              'Bayar Instan via QRIS',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                            subtitle: const Text(
+                              'Ketuk untuk scan QR Code pembayaran',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: QrisGeneratorWidget(
+                                  namaWarga: widget.namaWarga,
+                                  jenisIuran: _jenisIuranSelected,
+                                  nominalRupiah: _nominalController.text.isEmpty ? '0' : _nominalController.text,
+                                  bulanPeriode: _bulanSelected,
+                                  qrSize: 180,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Media Bukti Transfer
+                      const Text(
+                        'Upload Struk Bukti Transfer',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => _pilihGambarBukti(ImageSource.gallery),
+                            icon: const Icon(Icons.image, color: AppColors.primary),
+                            label: const Text('Galeri'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.secondary.withAlpha(35),
+                              foregroundColor: AppColors.primary,
+                              elevation: 0,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            onPressed: () => _pilihGambarBukti(ImageSource.camera),
+                            icon: const Icon(Icons.camera_alt, color: AppColors.primary),
+                            label: const Text('Kamera'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.secondary.withAlpha(35),
+                              foregroundColor: AppColors.primary,
+                              elevation: 0,
+                            ),
                           ),
                         ],
-                        const SizedBox(height: 16),
+                      ),
+                      if (_imageBytes != null) ...[
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(_imageBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                        ),
                       ],
+                      const SizedBox(height: 20),
 
                       SizedBox(
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
                           onPressed: _isUploading ? null : _simpanTransaksiKas,
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                           child: _isUploading 
                             ? const CircularProgressIndicator(color: Colors.white) 
                             : Text(
@@ -341,14 +481,21 @@ class _KasPageState extends State<KasPage> {
             ),
             const SizedBox(height: 28),
 
-            // === COMPONENT: HEADER LOG & TAB FILTER RESPONSIVE ===
+            // === RIWAYAT TRANSAKSI KAS ===
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Riwayat Kas Lingkungan RT', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                const Text(
+                  'Riwayat Kas Lingkungan RT',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE5E7EB))
+                  ),
                   child: DropdownButton<String>(
                     value: _filterStatusSelected,
                     underline: const SizedBox(),
@@ -368,106 +515,115 @@ class _KasPageState extends State<KasPage> {
             ),
             const SizedBox(height: 12),
 
-            // AREA RENDER DATA LIST MUTASI TRANSAKSI
-            _riwayatKas.isEmpty
-                ? const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Belum ada data mutasi kas.', style: TextStyle(color: Colors.grey, fontSize: 12))))
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _riwayatKas.length,
-                    itemBuilder: (context, idx) {
-                      final item = _riwayatKas[idx];
-                      final isMasuk = item['tipe_transaksi'] == 'MASUK';
-                      
-                      // LOGIKA FILTER DUA ARAH (CLIENT SIDE REDUCTION)
-                      if (_filterStatusSelected == 'MASUK' && !isMasuk) return const SizedBox.shrink();
-                      if (_filterStatusSelected == 'KELUAR' && isMasuk) return const SizedBox.shrink();
-                      
-                      return Card(
-                        elevation: 0,
-                        margin: const EdgeInsets.only(bottom: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFE5E7EB))),
-                        child: Column(
-                          children: [
-                            ListTile(
-                              leading: !isMasuk
-                                  ? const CircleAvatar(backgroundColor: Color(0xFFFEE2E2), child: Icon(Icons.arrow_upward, color: Colors.red, size: 20))
-                                  : item['bukti_bayar'] != null
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(6),
-                                          child: Image.memory(base64Decode(item['bukti_bayar']), width: 40, height: 40, fit: BoxFit.cover),
-                                        )
-                                      : const CircleAvatar(backgroundColor: Color(0xFFDCFCE7), child: Icon(Icons.arrow_downward, color: Colors.green, size: 20)),
-                              title: Text(item['jenis_iuran'] ?? 'Kas RT', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Periode: ${item['bulan_periode']} — Oleh: ${item['nama_warga']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Tanggal: ${item['tanggal_setor'] != null ? item['tanggal_setor'].toString().substring(0, 10).split('-').reversed.join('-') : '-'}',
-                                      style: const TextStyle(fontSize: 10, color: AppColors.secondary, fontWeight: FontWeight.w500)
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              isThreeLine: true,
-                              trailing: SizedBox(
-                                width: 90,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '${isMasuk ? "+" : "-"} Rp ${item['jumlah_nominal']}',
-                                      style: TextStyle(fontWeight: FontWeight.bold, color: isMasuk ? Colors.green[700] : Colors.red[700], fontSize: 13),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: item['status_verifikasi'] == 'Lunas' ? const Color(0xFFDCFCE7) : const Color(0xFFFEF9C3),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        item['status_verifikasi'] ?? 'Pending',
-                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: item['status_verifikasi'] == 'Lunas' ? Colors.green[800] : Colors.amber[900]),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const Divider(height: 1),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+            // RENDER DATA LIST
+            displayRiwayat.isEmpty
+              ? const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Belum ada data mutasi kas.', style: TextStyle(color: Colors.grey, fontSize: 12))))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: displayRiwayat.length,
+                  itemBuilder: (context, idx) {
+                    final item = displayRiwayat[idx];
+                    final isMasuk = item['tipe_transaksi'] == 'MASUK';
+                    
+                    if (_filterStatusSelected == 'MASUK' && !isMasuk) return const SizedBox.shrink();
+                    if (_filterStatusSelected == 'KELUAR' && isMasuk) return const SizedBox.shrink();
+                    
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Color(0xFFE5E7EB))
+                      ),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: !isMasuk
+                              ? const CircleAvatar(backgroundColor: Color(0xFFFEE2E2), child: Icon(Icons.arrow_upward, color: Colors.red, size: 20))
+                              : item['bukti_bayar'] != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.memory(base64Decode(item['bukti_bayar']), width: 40, height: 40, fit: BoxFit.cover),
+                                  )
+                                : const CircleAvatar(backgroundColor: Color(0xFFDCFCE7), child: Icon(Icons.arrow_downward, color: Colors.green, size: 20)),
+                            title: Text(item['jenis_iuran'] ?? 'Kas RT', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.edit, size: 16, color: AppColors.primary),
-                                    label: const Text('Edit', style: TextStyle(color: AppColors.primary, fontSize: 12)),
-                                    onPressed: () => _mulaiEditTransaksiKas(item),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
-                                    label: const Text('Hapus', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
-                                    onPressed: () => _hapusTransaksiKas(item['id'] as int),
+                                  Text('Periode: ${item['bulan_periode']} — Oleh: ${item['nama_warga']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Tanggal: ${item['tanggal_setor'] != null ? item['tanggal_setor'].toString().substring(0, 10).split('-').reversed.join('-') : '-'}',
+                                    style: const TextStyle(fontSize: 10, color: AppColors.secondary, fontWeight: FontWeight.w500)
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  )
+                            isThreeLine: true,
+                            trailing: SizedBox(
+                              width: 90,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${isMasuk ? "+" : "-"} Rp ${item['jumlah_nominal']}',
+                                    style: TextStyle(fontWeight: FontWeight.bold, color: isMasuk ? Colors.green[700] : Colors.red[700], fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: item['status_verifikasi'] == 'Lunas' ? const Color(0xFFDCFCE7) : const Color(0xFFFEF9C3),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      item['status_verifikasi'] ?? 'Pending',
+                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: item['status_verifikasi'] == 'Lunas' ? Colors.green[800] : Colors.amber[900]),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  icon: const Icon(Icons.edit, size: 16, color: AppColors.primary),
+                                  label: const Text('Edit', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+                                  onPressed: () => _mulaiEditTransaksiKas(item),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton.icon(
+                                  icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
+                                  label: const Text('Hapus', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                                  onPressed: () => _hapusTransaksiKas(item['id'] as int),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                )
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nominalController.dispose();
+    _keteranganController.dispose();
+    super.dispose();
   }
 }

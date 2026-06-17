@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/database_helper.dart';
 import '../theme/app_colors.dart';
 import 'kritik_page.dart';
@@ -20,6 +21,31 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
   String? _base64BuktiKeluhan;
   bool _isEditMode = false;
   bool _isLoading = false;
+
+  Future<void> _bukaNavigasiMaps(String koordinat) async {
+    final parts = koordinat.split(',');
+    if (parts.length != 2) return;
+    final lat = parts[0].trim();
+    final lon = parts[1].trim();
+    
+    final googleMapsUrl = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lon');
+    
+    try {
+      final success = await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      if (!success && mounted) {
+        throw 'launchUrl returned false';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal membuka aplikasi peta: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -200,7 +226,7 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.secondary.withOpacity(0.12),
+                                  color: AppColors.secondary.withAlpha(30),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
@@ -216,6 +242,91 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                                             fontWeight: FontWeight.bold,
                                             color: AppColors.secondary)),
                                   ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          // GPS Koordinat & Status
+                          if (widget.kritik['lokasi_koordinat'] != null &&
+                              widget.kritik['lokasi_koordinat'] != 'Tidak tersedia') ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withAlpha(15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.blue.withAlpha(50)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.gps_fixed, size: 16, color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'GPS: ${widget.kritik['lokasi_koordinat']}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.blue[700],
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _bukaNavigasiMaps(widget.kritik['lokasi_koordinat']),
+                                    icon: const Icon(Icons.navigation, size: 14, color: Colors.white),
+                                    label: const Text(
+                                      'Rute',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Text('Status: ', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: (widget.kritik['status_laporan'] ?? 'Belum ditangani') == 'Selesai'
+                                      ? Colors.green.withAlpha(25)
+                                      : (widget.kritik['status_laporan'] == 'Diproses'
+                                          ? Colors.blue.withAlpha(25)
+                                          : Colors.orange.withAlpha(25)),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: (widget.kritik['status_laporan'] ?? 'Belum ditangani') == 'Selesai'
+                                        ? Colors.green
+                                        : (widget.kritik['status_laporan'] == 'Diproses'
+                                            ? Colors.blue
+                                            : Colors.orange),
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.kritik['status_laporan'] ?? 'Belum ditangani',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: (widget.kritik['status_laporan'] ?? 'Belum ditangani') == 'Selesai'
+                                        ? Colors.green[700]
+                                        : (widget.kritik['status_laporan'] == 'Diproses'
+                                            ? Colors.blue[700]
+                                            : Colors.orange[700]),
+                                  ),
                                 ),
                               ),
                             ],
@@ -317,10 +428,10 @@ class _DetailKritikPageState extends State<DetailKritikPage> {
                             Container(
                               height: 200,
                               decoration: BoxDecoration(
-                                color: AppColors.secondary.withOpacity(0.12),
+                                color: AppColors.secondary.withAlpha(30),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                    color: AppColors.secondary.withOpacity(0.4)),
+                                    color: AppColors.secondary.withAlpha(100)),
                               ),
                               child: const Center(
                                 child: Text('Tidak ada foto', style: TextStyle(color: AppColors.textSecondary)),
